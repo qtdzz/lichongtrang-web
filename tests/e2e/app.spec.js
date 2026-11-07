@@ -402,7 +402,7 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   const info = JSON.parse(await readFile(join(DIST, 'build-info.json'), 'utf8'));
   expect(buildRowText).toContain(info.engineHash.slice(0, 8));
   expect(aboutText).toMatch(/Thuật toán & tài liệu tham khảo/i);
-  expect(aboutText).toContain('Hồ Ngọc Đức — How to compute the Vietnamese lunar calendar');
+  expect(aboutText).toContain('Hồ Ngọc Đức — Thuật toán tính âm lịch');
   expect(aboutText).toContain('Astronomical Algorithms');
   for (const removedDetail of [
     'quy tắc chuyển đổi',
@@ -420,6 +420,8 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   expect(aboutText).toMatch(/License:\s*AGPL-3\.0/);
   expect(aboutText).toMatch(/Build/i);
   await expect(page.locator('#about a[href="https://www.informatik.uni-leipzig.de/~duc/amlich/calrules.html"]')).toBeVisible();
+  await expect(page.locator('#about a[href="https://web.archive.org/web/20250123093939/http://www.informatik.uni-leipzig.de/~duc/amlich/calrules.html"]')).toBeVisible();
+  await expect(page.locator('#about a[href="https://web.archive.org/web/20241204143834/http://www.informatik.uni-leipzig.de/~duc/amlich/calrules_en.html"]')).toBeVisible();
 
   await snap('phone-about.png', { stabilizeBuildRow: true });
   await page.locator('#about-close').click();
