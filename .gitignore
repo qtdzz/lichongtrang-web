@@ -11,6 +11,7 @@ npm-debug.log*
 
 # Agent design specs and scratch workspaces.
 .superpowers/
+.worktrees/
 docs/superpowers/
 
 # Editors and OS noise.
