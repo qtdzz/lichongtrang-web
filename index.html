@@ -48,10 +48,12 @@
 </header>
 
 <main id="main">
+  <h1 class="sr-only">Lịch Ông Trăng - Âm lịch Việt Nam</h1>
 
-  <div class="weekday-strip" id="weekdays" role="row" aria-label="Thứ trong tuần"></div>
-
-  <div class="grid" id="grid" role="grid" aria-label="Lịch tháng"></div>
+  <div class="month-grid" role="grid" aria-label="Lịch tháng">
+    <div class="weekday-strip" id="weekdays" role="row" aria-label="Thứ trong tuần"></div>
+    <div class="grid" id="grid" role="rowgroup"></div>
+  </div>
 
   <!--
     The zoomed-out levels: twelve years in a block, then one year's twelve months, drawn by app.js into
@@ -111,7 +113,7 @@
   only says "Cài đặt / Giới thiệu" is a dialog wearing a drawer's clothes. Settings and the credits stay
   dialogs: they are content to read rather than places to go.
 -->
-<aside class="drawer" id="menu" role="dialog" aria-modal="true" aria-label="Trình đơn">
+<div class="drawer" id="menu" role="dialog" aria-modal="true" aria-label="Trình đơn">
   <div class="drawer-head">
     <div>
       <h2 class="drawer-title">Lịch Ông Trăng</h2>
@@ -127,7 +129,7 @@
     <span class="menu-row-label">Giới thiệu</span>
     <span class="menu-row-help">Phương pháp tính lịch và nguồn tham khảo</span>
   </button>
-</aside>
+</div>
 
 <!--
   About: concise credits for the published calendar algorithm and astronomical references, the licence,

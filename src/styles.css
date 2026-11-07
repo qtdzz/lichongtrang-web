@@ -26,7 +26,7 @@
   --md-sys-color-on-primary-container: #190052;
   --md-sys-color-secondary-container: #e8def8;
   --md-sys-color-on-secondary-container: #1d192b;
-  --md-sys-color-outline: #79747e;
+  --md-sys-color-outline: #746f79;
   --md-sys-color-outline-variant: #cac4d0;
   --md-sys-color-inverse-surface: #322f35;
   --md-sys-color-inverse-on-surface: #f5eff7;
@@ -97,6 +97,20 @@
 }
 
 * { box-sizing: border-box; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.grid-row { display: contents; }
 
 html, body {
   margin: 0;
@@ -269,8 +283,17 @@ body {
   line-height: 1;
 }
 
-/* Outside the displayed month: present, quiet, never confused with the month itself. */
-.cell.is-outside { opacity: 0.38; }
+/* Outside the displayed month: present, quiet, never confused with the month itself.
+   Uses --md-sys-color-outline rather than opacity so interactive cells stay >= 4.5:1 WCAG AA contrast. */
+.cell.is-outside .cell-solar,
+.cell.is-outside .cell-lunar,
+.cell.is-outside .cell-label,
+.cell.is-outside.is-holiday .cell-solar,
+.cell.is-outside.is-term .cell-lunar,
+.cell.is-outside.is-month-start .cell-lunar {
+  color: var(--md-sys-color-outline);
+  font-weight: 500;
+}
 
 /* The engine's emphasis decides the colour; the surface only maps it to its palette.
    Holidays and solar terms use text accents only; container fills are reserved for the active day. */
@@ -304,6 +327,7 @@ body {
    and its cells are the only tap targets on it. Set as a class on the body rather than as `hidden` on
    each part, because each of them already carries a `display` from a rule of its own and `hidden`
    loses to that - the trap the panel body below documents. */
+body.is-zoomed .month-grid,
 body.is-zoomed .weekday-strip,
 body.is-zoomed .grid,
 body.is-zoomed .panel,

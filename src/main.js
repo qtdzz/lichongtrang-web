@@ -98,9 +98,14 @@ function renderWeekdays() {
   strip.textContent = '';
   for (const name of names) {
     const el = document.createElement('span');
+    el.setAttribute('role', 'columnheader');
     el.textContent = name;
     strip.append(el);
   }
+}
+
+function stripZodiac(canChi) {
+  return canChi.replace(/\s*\([^)]*\)$/, '');
 }
 
 function renderTitle(grid) {
@@ -117,13 +122,13 @@ function renderTitle(grid) {
     // The lunar year comes from the year's midsummer, not 1 January, which can still be in the
     // previous lunar year - the same reference the phone's selector titles itself with.
     $('title-gregorian').textContent = String(selectorYear);
-    $('title-canchi').textContent = monthTitle(selectorYear, 6, 'vi').canChi;
+    $('title-canchi').textContent = stripZodiac(monthTitle(selectorYear, 6, 'vi').canChi);
     el.setAttribute('aria-label', 'Chạm để về lịch tháng');
     return;
   }
   const title = monthTitle(grid.year, grid.month, 'vi');
   $('title-gregorian').textContent = title.gregorian;
-  $('title-canchi').textContent = title.canChi;
+  $('title-canchi').textContent = stripZodiac(title.canChi);
   el.setAttribute('aria-label', 'Chạm để xem theo năm');
 }
 
@@ -164,7 +169,15 @@ function cellLunarText(cell) {
 function renderGrid(grid) {
   const el = $('grid');
   el.textContent = '';
-  for (const cell of grid.cells) {
+  let rowEl = null;
+  for (let i = 0; i < grid.cells.length; i += 1) {
+    if (i % 7 === 0) {
+      rowEl = document.createElement('div');
+      rowEl.className = 'grid-row';
+      rowEl.setAttribute('role', 'row');
+      el.append(rowEl);
+    }
+    const cell = grid.cells[i];
     const button = document.createElement('button');
     button.type = 'button';
     button.className = cellClass(cell);
@@ -197,9 +210,9 @@ function renderGrid(grid) {
       button.append(tag);
     }
 
-    el.append(button);
+    rowEl.append(button);
   }
-  el.setAttribute('aria-rowcount', String(grid.rowCount));
+  el.parentElement?.setAttribute('aria-rowcount', String(grid.rowCount + 1));
 }
 
 function fact(text, kind) {
@@ -383,7 +396,15 @@ function renderSelector() {
     for (let i = 1; i <= 12; i += 1) values.push(i);
   }
 
-  for (const value of values) {
+  let rowEl = null;
+  for (let i = 0; i < values.length; i += 1) {
+    if (i % 4 === 0) {
+      rowEl = document.createElement('div');
+      rowEl.className = 'grid-row';
+      rowEl.setAttribute('role', 'row');
+      el.append(rowEl);
+    }
+    const value = values[i];
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'selector-cell';
@@ -404,7 +425,7 @@ function renderSelector() {
       button.setAttribute('aria-label', title.gregorian);
       if (selectorYear === view.year && value === view.month) button.classList.add('is-current');
     }
-    el.append(button);
+    rowEl.append(button);
   }
 }
 

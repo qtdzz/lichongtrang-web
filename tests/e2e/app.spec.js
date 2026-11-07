@@ -130,6 +130,34 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
           }
           return ratios;
         })(),
+        outsideContrast: (() => {
+          const ratios = {};
+          for (const cls of ['cell-solar', 'cell-lunar']) {
+            const el = document.querySelector(`.cell.is-outside .${cls}`);
+            if (!el) continue;
+            const cell = el.closest('.cell');
+            const opacity = Number(getComputedStyle(cell).opacity ?? 1);
+            const fgRgb = rgb(getComputedStyle(el).color);
+            const bgRgb = rgb(opaqueBackground(el));
+            const blended = fgRgb.map((c, i) => Math.round(c * opacity + bgRgb[i] * (1 - opacity)));
+            const fgL = luminance(blended);
+            const bgL = luminance(bgRgb);
+            ratios[cls] = (Math.max(fgL, bgL) + 0.05) / (Math.min(fgL, bgL) + 0.05);
+          }
+          return ratios;
+        })(),
+        a11yStructure: (() => {
+          const weekdays = document.getElementById('weekdays');
+          const grid = document.getElementById('grid');
+          const menu = document.getElementById('menu');
+          return {
+            hasH1: document.querySelectorAll('h1').length >= 1,
+            weekdaysHasColumnHeaders: [...weekdays.children].every((c) => c.getAttribute('role') === 'columnheader'),
+            weekdaysParentIsGrid: weekdays.parentElement?.getAttribute('role') === 'grid' || weekdays.getAttribute('role') !== 'row',
+            gridCellsHaveRowParent: [...grid.querySelectorAll('[role="gridcell"]')].every((c) => c.parentElement?.getAttribute('role') === 'row'),
+            menuTagAllowsDialog: menu.getAttribute('role') !== 'dialog' || menu.tagName.toLowerCase() !== 'aside',
+          };
+        })(),
         panelOpensWithDate: document.querySelector('.fact')?.classList.contains('is-selected-date') ?? false,
         legendDates: [...document.querySelectorAll('.legend-date')].map((el) => el.textContent),
         offlineBadgeHidden: document.getElementById('offline-badge')?.hidden ?? null,
@@ -158,15 +186,27 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
       offBy: Math.round((box.left + box.width / 2) - window.innerWidth / 2),
       leading: document.querySelector('.top').firstElementChild.id,
       last: document.querySelector('.top').lastElementChild.className,
+      canChi: document.getElementById('title-canchi').textContent.trim(),
     };
   });
   expect(Math.abs(header.offBy)).toBeLessThanOrEqual(2);
   expect(header.leading).toBe('menu-button');
   expect(header.last).toMatch(/nav-balance/);
+  expect(header.canChi).toBe('Năm Bính Ngọ');
 
   for (const ratio of Object.values(view.legendContrast ?? {})) {
     if (ratio != null) expect(ratio).toBeGreaterThanOrEqual(4.5);
   }
+  for (const ratio of Object.values(view.outsideContrast ?? {})) {
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  }
+  expect(view.a11yStructure).toEqual({
+    hasH1: true,
+    weekdaysHasColumnHeaders: true,
+    weekdaysParentIsGrid: true,
+    gridCellsHaveRowParent: true,
+    menuTagAllowsDialog: true,
+  });
   expect(view.panelOpensWithDate).toBe(true);
   for (const text of view.legendDates ?? []) {
     expect(text).toMatch(/^\d+\/\d+n? \(\d\d\/\d\d\)$/);
@@ -358,6 +398,10 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
     const shown = (id) => getComputedStyle(document.getElementById(id)).display !== 'none';
     const visibleDays = [...document.querySelectorAll('.cell')]
       .filter((c) => c.getBoundingClientRect().height > 0).length;
+    const selectorEl = document.getElementById('selector');
+    const selectorCellsHaveRowParent = [...selectorEl.querySelectorAll('[role="gridcell"]')].every(
+      (c) => c.parentElement?.getAttribute('role') === 'row',
+    );
     return {
       title: document.getElementById('title-gregorian').textContent.trim(),
       canChi: document.getElementById('title-canchi').textContent.trim(),
@@ -370,7 +414,8 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
       minWidth: boxes.length ? Math.round(Math.min(...boxes.map((b) => b.width))) : 0,
       minHeight: boxes.length ? Math.round(Math.min(...boxes.map((b) => b.height))) : 0,
       cells: cells.length,
-      selectorShown: !document.getElementById('selector').hidden,
+      selectorShown: !selectorEl.hidden,
+      selectorCellsHaveRowParent,
       monthPartsHidden: ['grid', 'weekdays', 'panel'].filter((id) => !shown(id)),
       visibleDayCells: visibleDays,
     };
@@ -384,6 +429,7 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   expect(years.rows).toBe(3);
   expect(years.perRow).toBe(4);
   expect(years.selectorShown).toBe(true);
+  expect(years.selectorCellsHaveRowParent).toBe(true);
   expect(years.monthPartsHidden).toEqual(['grid', 'weekdays', 'panel']);
   expect(years.visibleDayCells).toBe(0);
   expect(years.title).toMatch(/^\d{4} – \d{4}$/);
@@ -404,6 +450,7 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   expect(months.perRow).toBe(4);
   expect(months.title).toBe(String(targetYear));
   expect(months.canChi.length).toBeGreaterThan(0);
+  expect(months.canChi).not.toMatch(/\(/);
 
   const monthCell = page.locator('.selector-cell').nth(6);
   const monthName = await monthCell.getAttribute('aria-label');
@@ -490,6 +537,9 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   expect(darkView.colors.contrast).toBeGreaterThanOrEqual(4.5);
   for (const ratio of Object.values(darkView.legendContrast ?? {})) {
     if (ratio != null) expect(ratio).toBeGreaterThanOrEqual(4.5);
+  }
+  for (const ratio of Object.values(darkView.outsideContrast ?? {})) {
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
   }
   await page.locator(`.cell[data-iso="${holidayIso}"]`).click();
   const selectedHolidayContrastDark = await page.evaluate((iso) => {
