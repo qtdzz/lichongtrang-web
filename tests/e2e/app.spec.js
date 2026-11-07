@@ -172,6 +172,61 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
     expect(text).toMatch(/^\d+\/\d+n? \(\d\d\/\d\d\)$/);
   }
 
+  const m3Light = await page.evaluate(() => {
+    const root = getComputedStyle(document.documentElement);
+    const holidayCell = document.querySelector('.cell.is-holiday:not(.is-selected)');
+    const termCell = document.querySelector('.cell.is-term:not(.is-selected)');
+    const panel = getComputedStyle(document.getElementById('panel'));
+    const drawer = getComputedStyle(document.getElementById('menu'));
+    const sheet = getComputedStyle(document.getElementById('sheet'));
+    const sheetBefore = getComputedStyle(document.getElementById('sheet'), '::before');
+    return {
+      surfaceToken: root.getPropertyValue('--md-sys-color-surface').trim(),
+      primaryToken: root.getPropertyValue('--md-sys-color-primary').trim(),
+      holidayBg: holidayCell ? getComputedStyle(holidayCell).backgroundColor : null,
+      termBg: termCell ? getComputedStyle(termCell).backgroundColor : null,
+      panelBorderTop: panel.borderTopWidth,
+      panelRadius: panel.borderTopLeftRadius,
+      drawerRadiusRight: drawer.borderTopRightRadius,
+      drawerBorderRight: drawer.borderRightWidth,
+      sheetRadiusTop: sheet.borderTopLeftRadius,
+      sheetHandleDisplay: sheetBefore.display,
+      sheetHandleWidth: sheetBefore.width,
+    };
+  });
+  expect(m3Light.surfaceToken).toBe('#faf8ff');
+  expect(m3Light.primaryToken).toBe('#583d9e');
+  expect(m3Light.holidayBg).toBe('rgba(0, 0, 0, 0)');
+  expect(m3Light.termBg).toBe('rgba(0, 0, 0, 0)');
+  expect(m3Light.panelBorderTop).toBe('0px');
+  expect(m3Light.panelRadius).toBe('20px');
+  expect(m3Light.drawerRadiusRight).toBe('28px');
+  expect(m3Light.drawerBorderRight).toBe('0px');
+  expect(m3Light.sheetRadiusTop).toBe('28px');
+  expect(m3Light.sheetHandleDisplay).toBe('block');
+  expect(m3Light.sheetHandleWidth).toBe('32px');
+
+  const holidayIso = await page.evaluate(() => document.querySelector('.cell.is-holiday')?.dataset.iso ?? null);
+  expect(holidayIso).not.toBeNull();
+  await page.locator(`.cell[data-iso="${holidayIso}"]`).click();
+  const selectedHolidayContrastLight = await page.evaluate((iso) => {
+    const el = document.querySelector(`.cell[data-iso="${iso}"] .cell-solar`);
+    const cell = el.closest('.cell');
+    const rgb = (v) => v.match(/\d+/g).slice(0, 3).map(Number);
+    const lum = ([r, g, b]) => {
+      const [rs, gs, bs] = [r, g, b].map((c) => {
+        const s = c / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+    };
+    const l1 = lum(rgb(getComputedStyle(el).color));
+    const l2 = lum(rgb(getComputedStyle(cell).backgroundColor));
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+  }, holidayIso);
+  expect(selectedHolidayContrastLight).toBeGreaterThanOrEqual(4.5);
+  await todayCell.click();
+
   // ---- Swipe & in-place selection
   const swipeState = () => page.evaluate(() => ({
     title: document.getElementById('title-gregorian').textContent,
@@ -431,6 +486,30 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   await snap('phone.png');
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.waitForTimeout(100);
+  const darkView = await measure();
+  expect(darkView.colors.contrast).toBeGreaterThanOrEqual(4.5);
+  for (const ratio of Object.values(darkView.legendContrast ?? {})) {
+    if (ratio != null) expect(ratio).toBeGreaterThanOrEqual(4.5);
+  }
+  await page.locator(`.cell[data-iso="${holidayIso}"]`).click();
+  const selectedHolidayContrastDark = await page.evaluate((iso) => {
+    const el = document.querySelector(`.cell[data-iso="${iso}"] .cell-solar`);
+    const cell = el.closest('.cell');
+    const rgb = (v) => v.match(/\d+/g).slice(0, 3).map(Number);
+    const lum = ([r, g, b]) => {
+      const [rs, gs, bs] = [r, g, b].map((c) => {
+        const s = c / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+    };
+    const l1 = lum(rgb(getComputedStyle(el).color));
+    const l2 = lum(rgb(getComputedStyle(cell).backgroundColor));
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+  }, holidayIso);
+  expect(selectedHolidayContrastDark).toBeGreaterThanOrEqual(4.5);
+  await todayCell.click();
+  await page.waitForTimeout(100);
   await snap('phone-dark.png');
   await page.emulateMedia({ colorScheme: 'light' });
   await page.waitForTimeout(100);
@@ -452,6 +531,10 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   expect(desktopDialog.dx).toBeLessThanOrEqual(2);
   expect(desktopDialog.dy).toBeLessThanOrEqual(2);
   expect(desktopDialog.width).toBeLessThanOrEqual(700);
+  const desktopHandleDisplay = await page.evaluate(
+    () => getComputedStyle(document.getElementById('about'), '::before').display,
+  );
+  expect(desktopHandleDisplay).toBe('none');
 
   await snap('desktop-about.png', { stabilizeBuildRow: true });
   await page.locator('#about-close').click();
@@ -473,6 +556,14 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   expect(offlineView.firstLunar).toBe(view.firstLunar);
   expect(offlineView.offlineBadgeHidden).toBe(false);
   await snap('phone-offline.png');
+  await page.locator('#next').click();
+  await page.waitForTimeout(100);
+  const badgeFabGap = await page.evaluate(() => {
+    const badge = document.getElementById('offline-badge').getBoundingClientRect();
+    const fab = document.getElementById('today-button').getBoundingClientRect();
+    return Math.round(fab.top - badge.bottom);
+  });
+  expect(badgeFabGap).toBeGreaterThanOrEqual(4);
 
   expect(noise).toEqual([]);
 });
