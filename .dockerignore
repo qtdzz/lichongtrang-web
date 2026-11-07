@@ -1,0 +1,8 @@
+# Keep the build context to the sources the build actually reads. LICENSE stays: it is served.
+.git
+.superpowers
+dist
+test-results
+playwright-report
+node_modules
+*.md

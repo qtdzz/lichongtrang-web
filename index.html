@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lịch Ông Trăng - Âm lịch Việt Nam</title>
+<meta name="description" content="Lịch âm dương Việt Nam: ngày âm lịch, can chi, tiết khí, ngày lễ. Chạy được khi không có mạng.">
+<meta name="theme-color" content="#d6c8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17122b" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<link rel="manifest" href="manifest.webmanifest">
+<!--
+  The Apple trio from before the manifest was read on iOS. Modern iOS takes the name, icons and
+  display from the manifest, but older iOS uses these: standalone instead of a Safari window, the
+  label under the icon (short_name is not used), and the status bar style. They cost nothing when
+  ignored, and the wrong label on a home screen is not something you can fix later from the server.
+-->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lịch Ông Trăng">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="./src/styles.css">
+</head>
+<body>
+
+<!--
+  The month screen, mirroring the Android one: the same header, the same grid, the same day panel.
+  Every value shown here comes from the Kotlin engine compiled to JavaScript, so this page has no
+  calendar logic of its own - it draws what the engine says, exactly as the Compose surface does.
+-->
+
+<header class="top">
+  <button class="nav menu" id="menu-button" aria-label="Trình đơn" aria-haspopup="dialog" aria-expanded="false">☰</button>
+  <button class="nav" id="prev" aria-label="Tháng trước">‹</button>
+  <button class="title" id="title" aria-label="Xem theo năm">
+    <span class="title-gregorian" id="title-gregorian">…</span>
+    <span class="title-canchi" id="title-canchi"></span>
+  </button>
+  <button class="nav" id="next" aria-label="Tháng sau">›</button>
+  <!--
+    An empty slot the width of the menu button, and nothing else. The ☰ belongs at the leading edge -
+    that is where a drawer comes from - but the arrows have to stay symmetric around the month title,
+    which is the anchor of a calendar. Measured with the ☰ at the trailing edge, the title's centre sits
+    30px left of the viewport's; with it leading and no balance, 30px right. This is what makes it 0.
+  -->
+  <span class="nav-balance" aria-hidden="true"></span>
+</header>
+
+<main id="main">
+
+  <div class="weekday-strip" id="weekdays" role="row" aria-label="Thứ trong tuần"></div>
+
+  <div class="grid" id="grid" role="grid" aria-label="Lịch tháng"></div>
+
+  <!--
+    The zoomed-out levels: twelve years in a block, then one year's twelve months, drawn by app.js into
+    the same four-by-three grid the phone uses. The title zooms out and a cell zooms back in.
+  -->
+  <div class="selector" id="selector" role="grid" aria-label="Chọn năm" hidden></div>
+
+  <section class="panel is-empty" id="panel" aria-live="polite">
+    <p class="panel-hint" id="panel-hint">Chọn một ngày để xem chi tiết âm lịch.</p>
+    <div class="panel-body" id="panel-body" hidden>
+      <!--
+        The panel starts with the day's facts. A top strip used to sit here - the weekday, a line
+        reading "Ngày 18 · Tháng 9 28, 2026", and a badge with the lunar month - and all three are
+        gone: the strip put a lunar day beside a Gregorian date, which read as one date and was two,
+        and both the weekday and the solar date are already visible on the selected cell above. The
+        lunar month is still named in full in the last line ("Ngày 18 tháng 8 năm Bính Ngọ (Ngựa)").
+      -->
+      <ul class="panel-facts" id="panel-facts"></ul>
+    </div>
+  </section>
+
+  <section class="legend" id="legend" hidden>
+    <h2 class="legend-title" id="legend-title">Lễ &amp; tiết khí trong tháng</h2>
+    <ul class="legend-list" id="legend-list"></ul>
+  </section>
+
+</main>
+
+<!-- Settings. A dialog rather than a screen, because the month must stay visible behind it. -->
+<div class="sheet-backdrop" id="sheet-backdrop" hidden></div>
+<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
+  <h2 id="sheet-title">Cài đặt</h2>
+
+  <fieldset>
+    <legend>Ngôn ngữ</legend>
+    <p class="sheet-help">Ngày âm lịch luôn hiển thị theo tiếng Việt.</p>
+    <div class="choices" id="language-choices" role="radiogroup" aria-label="Ngôn ngữ">
+      <button class="choice" data-language="vi" role="radio" aria-checked="true">Tiếng Việt</button>
+      <button class="choice" data-language="en" role="radio" aria-checked="false">English</button>
+      <button class="choice" data-language="device" role="radio" aria-checked="false">Theo thiết bị</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Tuần bắt đầu</legend>
+    <div class="choices" id="weekstart-choices" role="radiogroup" aria-label="Tuần bắt đầu">
+      <button class="choice" data-weekstart="1" role="radio" aria-checked="true">Thứ hai</button>
+      <button class="choice" data-weekstart="0" role="radio" aria-checked="false">Chủ nhật</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Múi giờ tính ngày</legend>
+    <p class="sheet-help">Ngày âm lịch bắt đầu theo múi giờ này, không phải theo giờ máy.</p>
+    <div class="choices" id="zone-choices" role="radiogroup" aria-label="Múi giờ">
+      <button class="choice" data-zone="7" role="radio" aria-checked="true">Việt Nam (+7)</button>
+      <button class="choice" data-zone="device" role="radio" aria-checked="false">Theo thiết bị</button>
+    </div>
+  </fieldset>
+
+  <button class="sheet-close" id="sheet-close">Xong</button>
+</section>
+
+<!--
+  The drawer, which is what a ☰ at the leading edge promises: it comes from the edge the button sits on.
+  It is neither a screen nor quite a dialog - it names the app while it is open, because a drawer that
+  only says "Cài đặt / Giới thiệu" is a dialog wearing a drawer's clothes. Settings and the credits stay
+  dialogs: they are content to read rather than places to go.
+-->
+<aside class="drawer" id="menu" role="dialog" aria-modal="true" aria-label="Trình đơn">
+  <div class="drawer-head">
+    <div>
+      <h2 class="drawer-title">Lịch Ông Trăng</h2>
+      <p class="drawer-sub">Âm lịch Việt Nam</p>
+    </div>
+    <button class="drawer-close" id="menu-close" aria-label="Đóng trình đơn">✕</button>
+  </div>
+  <button class="menu-row" id="menu-settings" aria-haspopup="dialog" aria-expanded="false">
+    <span class="menu-row-label">Cài đặt</span>
+    <span class="menu-row-help">Ngôn ngữ, tuần bắt đầu, múi giờ tính ngày</span>
+  </button>
+  <button class="menu-row" id="menu-about" aria-haspopup="dialog" aria-expanded="false">
+    <span class="menu-row-label">Giới thiệu</span>
+    <span class="menu-row-help">Phương pháp tính lịch và nguồn tham khảo</span>
+  </button>
+</aside>
+
+<!--
+  About: concise credits for the published calendar algorithm and astronomical references, the licence,
+  and the build stamp.
+-->
+<section class="sheet" id="about" role="dialog" aria-modal="true" aria-labelledby="about-title" hidden>
+  <h2 id="about-title">Giới thiệu</h2>
+
+  <p class="about-lede">Lịch âm dương Việt Nam, chạy hoàn toàn ngoại tuyến trên trình duyệt.</p>
+
+  <h3 class="about-heading">Thuật toán &amp; tài liệu tham khảo</h3>
+  <ul class="about-list">
+    <li><strong>Hồ Ngọc Đức</strong> — <em>How to compute the Vietnamese lunar calendar</em> (<em>amlich</em>)</li>
+    <li><strong>Jean Meeus</strong> — <em>Astronomical Algorithms</em></li>
+    <li><strong>E. M. Reingold &amp; N. Dershowitz</strong> — <em>Calendrical Calculations</em></li>
+    <li><strong>P. K. Seidelmann</strong> — <em>Explanatory Supplement to the Astronomical Almanac</em></li>
+  </ul>
+
+  <p class="about-note">Giấy phép AGPL-3.0 — <a class="about-link" href="LICENSE">toàn văn giấy phép</a>.</p>
+
+  <p class="sheet-label about-build">Bản dựng</p>
+  <button class="build-row" id="build-row" title="Nhấn hai lần để sao chép">…</button>
+
+  <button class="sheet-close" id="about-close">Xong</button>
+</section>
+
+<!--
+  Shown only when the month on screen is not the current one. Browsing away from today is one swipe,
+  and getting back should not depend on remembering how many swipes it was.
+-->
+<button class="today-button" id="today-button" type="button" hidden></button>
+
+<p class="offline-badge" id="offline-badge" hidden></p>
+
+<noscript>
+  <p class="noscript">Trang này cần JavaScript để tính lịch âm.</p>
+</noscript>
+
+<!--
+  The application entry point. It imports the calendar engine (src/engine/amlich.js) directly as a
+  standard ES module.
+-->
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

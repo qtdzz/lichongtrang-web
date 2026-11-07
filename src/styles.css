@@ -1,0 +1,654 @@
+/*
+ * The web surface's look, taken from the Android app rather than invented.
+ *
+ * Same palette as the phone (the moon palette: deep navy / indigo / moonlight / paper, plus the
+ * pastel violet the web build wears), same density - the grid is the point of the app, so the cells
+ * stay compact and the type does the work. Light and dark follow the system, which is what the
+ * Compose theme does with its dynamic colours.
+ *
+ * Two things are web-specific. Tap targets are never under 48px, because the phone header's 40dp
+ * buttons were measurably below the touch minimum and there is no reason to port that. And every
+ * interactive element is a real <button>, so keyboard and screen readers get it for free.
+ */
+
+:root {
+  --paper: #faf8ff;
+  --ink: #1b1b21;
+  --muted: #5c5a70;
+  --line: #e4e0f0;
+  --pastel: #d6c8f2;
+  --pastel-deep: #b9a6e6;
+  --violet: #2e1f6b;
+  --indigo: #3a4a9c;
+  --navy: #00105c;
+  /* Festivals and solar terms. Hue matters as much as contrast here: this accent started as Material's
+     error red (hue 3), then became a muted rose-plum (hue 318) that still read as maroon and, on a
+     bordered pill, as a warning. It is violet now (hue 266), which is the palette's own family and is
+     not a status colour; the solar-term green sits at 155.
+     The values are set by the darkest background these ever appear on - the legend's pastel pill,
+     #d6c8f2 - where the red and the green both used to fall under 4.5:1, at 4.17 and 4.11. */
+  --holiday: #63428f;
+  --holiday-soft: #f2e8fa;
+  --holiday-on-selected: #e0c8f0;
+  --term: #1a5c40;
+  --term-soft: #e6f3ec;
+  --today: #7a4fd0;
+  --selected: #2e1f6b;
+  --radius: 14px;
+  --tap: 48px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #17122b;
+    --ink: #e7e2f5;
+    --muted: #a49cb8;
+    --line: #2e2846;
+    --pastel: #241d43;
+    --pastel-deep: #3a2f63;
+    --violet: #cbbdf5;
+    --indigo: #b8c3ff;
+    --navy: #d8d2f5;
+    --holiday: #c9b0f0;
+    --holiday-soft: #2a2142;
+    --holiday-on-selected: #3a2b52;
+    --term: #8fdbbc;
+    --term-soft: #14301f;
+    --today: #cbbdf5;
+    --selected: #d6c8f2;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+           env(safe-area-inset-left);
+}
+
+/* ---------- header ---------- */
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 4px;                      /* measured: the phone's arrows sat flush against the gear */
+  padding: 8px 10px;
+  position: sticky;
+  top: 0;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  z-index: 20;
+}
+
+.nav {
+  flex: 0 0 var(--tap);
+  width: var(--tap);
+  height: var(--tap);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.nav:hover { background: var(--pastel); }
+.nav:active { background: var(--pastel-deep); }
+
+/* The menu button leads the header, and nothing sits opposite it: an empty slot the same width keeps
+   the arrows symmetric around the month title, which is the one element in this row a reader is
+   looking for. Measured, the alternative - the menu trailing, or leading with no balance - puts the
+   title's centre 30px either side of the viewport's. */
+.menu { font-size: 20px; }
+
+.nav-balance {
+  flex: 0 0 var(--tap);
+  width: var(--tap);
+  height: var(--tap);
+}
+
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: center;
+  padding: 6px 4px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font: inherit;
+}
+
+.title:hover { background: var(--pastel); }
+
+.title-gregorian {
+  display: block;
+  font-size: 17px;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;        /* the phone let the title wrap and squeeze; this does not */
+}
+
+.title-canchi {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:focus-visible {
+  outline: 3px solid var(--today);
+  outline-offset: 2px;
+}
+
+/* ---------- weekday strip ---------- */
+
+.weekday-strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  padding: 10px 8px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ---------- month grid ---------- */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  /* The horizontal gesture belongs to the app: without this the browser treats a sideways drag as a
+     scroll and never delivers it as a pointer drag. Vertical scrolling still scrolls the page. */
+  touch-action: pan-y;
+  padding: 0 8px 8px;
+}
+
+.cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-height: 54px;
+  padding: 4px 2px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.cell:hover { background: var(--pastel); }
+
+.cell-solar {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.cell-lunar {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.cell-label {
+  font-size: 9px;
+  color: var(--indigo);
+  line-height: 1;
+}
+
+/* Outside the displayed month: present, quiet, never confused with the month itself. */
+.cell.is-outside { opacity: 0.38; }
+
+/* The engine's emphasis decides the colour; the surface only maps it to its palette. */
+.cell.is-holiday .cell-solar { color: var(--holiday); }
+.cell.is-holiday { background: var(--holiday-soft); }
+.cell.is-term .cell-lunar { color: var(--term); }
+.cell.is-term { background: var(--term-soft); }
+.cell.is-month-start .cell-lunar { color: var(--indigo); font-weight: 700; }
+
+.cell.is-today {
+  border-color: var(--today);
+  border-width: 2px;
+}
+
+.cell.is-selected {
+  background: var(--selected);
+  color: var(--paper);
+}
+
+.cell.is-selected .cell-solar,
+.cell.is-selected .cell-lunar,
+.cell.is-selected .cell-label { color: var(--paper); }
+
+.cell.is-selected.is-holiday .cell-solar { color: var(--holiday-on-selected); }
+
+/* ---------- zoomed-out levels: a twelve-year block, and a year's twelve months ---------- */
+
+/* One grid of twelve either way, four to a row - the shape the phone's two selectors share. The month
+   view's own parts step aside rather than shrinking around it, so the level has the screen to itself
+   and its cells are the only tap targets on it. Set as a class on the body rather than as `hidden` on
+   each part, because each of them already carries a `display` from a rule of its own and `hidden`
+   loses to that - the trap the panel body below documents. */
+body.is-zoomed .weekday-strip,
+body.is-zoomed .grid,
+body.is-zoomed .panel,
+body.is-zoomed .legend,
+body.is-zoomed .today-button { display: none; }
+
+/* The pill and the badge keep the page clear of themselves; with the pill gone, that room under a
+   zoomed-out level is dead space. */
+body.is-away.is-zoomed { padding-bottom: 0; }
+
+.selector {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 10px 8px 8px;
+}
+
+.selector[hidden] { display: none; }
+
+.selector-cell {
+  min-height: var(--tap);
+  padding: 8px 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--pastel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.selector-cell:hover { background: var(--pastel-deep); }
+
+/* Where the reader already is: the year, or the month, that the grid behind this level is showing. */
+.selector-cell.is-current {
+  background: var(--selected);
+  border-color: var(--selected);
+  color: var(--paper);
+}
+
+/* Outside the engine's window, which stops at 2100: shown, so the block has no holes in it, but inert. */
+.selector-cell:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.selector-cell:disabled:hover { background: var(--pastel); }
+
+/* ---------- day panel ---------- */
+
+.panel {
+  margin: 4px 8px 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--pastel);
+  min-height: 92px;
+}
+
+/* The placeholder is centred in its box, both ways, as the day's own details are below. */
+.panel.is-empty { display: flex; align-items: center; justify-content: center; }
+.panel-hint { margin: 0; color: var(--muted); font-size: 14px; text-align: center; }
+
+/* The panel is a plain stack now: the facts list, and nothing above it. It used to be a two-column
+   grid holding the date block on the left and the lunar-month badge spanning beside it; both are
+   gone, so the grid, their rules, and the badge's geometry have gone with them. */
+/* The body is a plain block, and its `hidden` attribute needs honouring explicitly: a specified
+   display beats [hidden], so without this an empty panel goes on showing the last day's facts. */
+.panel-body { display: block; }
+.panel-body[hidden] { display: none; }
+
+.panel-facts {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.fact {
+  font-size: 12.5px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+
+.fact.is-holiday { color: var(--holiday); border-color: var(--holiday); font-weight: 600; }
+.fact.is-term { color: var(--term); border-color: var(--term); }
+/* The selected date, first in the panel: the one row that says which day this is. It wears the same
+   solid violet as the selected cell in the grid, so the panel and the grid agree about which day is
+   being described. It used to be a dashed outline at the bottom, which read as an afterthought. */
+.fact.is-selected-date {
+  flex: 1 1 100%;
+  text-align: center;
+  background: var(--selected);
+  border-color: var(--selected);
+  color: var(--paper);
+  font-size: 14px;
+  font-weight: 650;
+  padding: 7px 12px;
+}
+
+/* ---------- legend ---------- */
+
+.legend { margin: 0 8px 92px; }
+
+.legend-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 6px 4px;
+}
+
+.legend-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+
+.legend-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13.5px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: var(--pastel);
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+}
+
+.legend-item:hover { border-color: var(--pastel-deep); }
+.legend-date { color: var(--muted); font-variant-numeric: tabular-nums; margin-left: auto; }
+.legend-kind-holiday { color: var(--holiday); font-weight: 650; }
+.legend-kind-term { color: var(--term); }
+
+/* ---------- settings sheet ---------- */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 45%);
+  z-index: 30;
+}
+
+.sheet {
+  position: fixed;
+  z-index: 31;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+  background: var(--paper);
+  border-radius: 18px 18px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+@media (min-width: 640px) {
+  .sheet {
+    left: 50%;
+    top: 50%;
+    bottom: auto;
+    transform: translate(-50%, -50%);
+    max-width: 520px;
+    /* Centred on both axes. Pinned to the bottom of a 900px window it put its own buttons 600px below
+       the last thing it said, and a desktop pointer has no thumb to sit near. */
+    max-height: min(84vh, 760px);
+    border-radius: 18px;
+    border: 1px solid var(--line);
+  }
+}
+
+.sheet h2 { margin: 0 0 12px; font-size: 18px; }
+
+.sheet fieldset {
+  border: 0;
+  border-top: 1px solid var(--line);
+  padding: 14px 0 6px;
+  margin: 0;
+}
+
+.sheet legend { font-size: 13px; font-weight: 700; padding: 0 0 6px; }
+
+.sheet-help { margin: 4px 0 8px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.choice {
+  min-height: var(--tap);
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.choice[aria-checked="true"] {
+  background: var(--selected);
+  border-color: var(--selected);
+  color: var(--paper);
+  font-weight: 600;
+}
+
+.sheet-label { margin: 0 0 6px; font-size: 13px; font-weight: 700; }
+
+.build-row {
+  width: 100%;
+  min-height: var(--tap);
+  text-align: left;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px dashed var(--line);
+  background: var(--pastel);
+  color: var(--ink);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  cursor: copy;
+}
+
+.sheet-close {
+  width: 100%;
+  min-height: var(--tap);
+  margin-top: 14px;
+  border-radius: 12px;
+  border: 0;
+  background: var(--selected);
+  color: var(--paper);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ---------- the drawer, and the credits ---------- */
+
+/* A drawer, not a dialog: it comes in from the edge the ☰ sits on, which is what a leading menu button
+   promises. Transformed rather than hidden so it can slide, and `visibility: hidden` while it is out -
+   that is what keeps its buttons out of the tab order and out of a screen reader's way when closed.
+   It does not open by swiping from the left edge on purpose: that gesture belongs to the browser's own
+   back action, and an app that fights it loses. */
+.drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 31;
+  display: flex;
+  flex-direction: column;
+  width: min(320px, 84vw);
+  padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  background: var(--paper);
+  border-right: 1px solid var(--line);
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition: transform 160ms ease, visibility 160ms;
+}
+
+.drawer.is-open {
+  transform: none;
+  visibility: visible;
+}
+
+.drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.drawer-title { margin: 0; font-size: 17px; font-weight: 700; }
+.drawer-sub { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
+
+.drawer-close {
+  flex: 0 0 auto;
+  width: var(--tap);
+  height: var(--tap);
+  margin: -10px -10px 0 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.drawer-close:hover { background: var(--pastel); }
+
+/* One row per place: the label, what is behind it, and the whole row as the target - which is the tap
+   minimum the rest of the app holds itself to. */
+.menu-row {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  margin-bottom: 8px;
+  padding: 12px 14px;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--pastel);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.menu-row:hover { background: var(--pastel-deep); }
+
+.menu-row-label { display: block; font-size: 16px; font-weight: 650; }
+.menu-row-help { display: block; margin-top: 2px; font-size: 12.5px; color: var(--muted); }
+.menu-row:hover .menu-row-help { color: var(--ink); }
+
+/* The credits are prose, so they are set as prose: a lede, small headings, and a list that keeps the
+   author's name bold and the work in italics. */
+.about-lede { margin: 0 0 14px; font-size: 14px; line-height: 1.5; }
+
+.about-heading {
+  margin: 18px 0 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.about-list { margin: 0; padding-left: 18px; }
+.about-list li { margin-bottom: 8px; font-size: 13.5px; line-height: 1.5; }
+
+.about-note { margin: 10px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+.about-note code { font-size: 12px; }
+.about-link { color: var(--indigo); }
+
+/* The build row follows prose rather than a fieldset, so it carries the rule the settings sheet used to
+   give it. */
+.about-build { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+
+/* ---------- back to today ---------- */
+
+/* Only when the view is not the current month (see render()). A pill at the bottom, wearing the same
+   violet as the selected day, so it reads as an action about the calendar rather than an alert. */
+.today-button {
+  position: fixed;
+  left: 50%;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 10px 22px;
+  border: 1px solid var(--selected);
+  border-radius: 999px;
+  background: var(--selected);
+  color: var(--paper);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(20, 12, 50, 0.28);
+}
+
+.today-button:hover { filter: brightness(1.08); }
+
+/* The offline badge sits exactly where this button does, and the two can be on screen together. */
+body.is-away .offline-badge { bottom: calc(70px + env(safe-area-inset-bottom)); }
+
+/* The panel keeps its place under the calendar, so the pill must not sit on top of it: this is the
+   pill's height plus its offset from the bottom, on every page the pill appears on. */
+body.is-away { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+
+/* ---------- offline badge ---------- */
+
+.offline-badge {
+  position: fixed;
+  left: 50%;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 12px;
+  z-index: 25;
+  opacity: 0.92;
+}
+
+.noscript { padding: 24px; text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
