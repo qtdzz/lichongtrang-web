@@ -25,6 +25,14 @@ export async function hashTree(root, { skip = [] } = {}) {
   return { hash: digest.digest('hex'), files };
 }
 
+function licenseMimeMiddleware(req, res, next) {
+  if (req.url && /^\/+LICENSE(?:\?|$)/.test(req.url)) {
+    req.url = '/LICENSE';
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  }
+  next();
+}
+
 function pwaBuildPlugin() {
   let outDir = 'dist';
   let rootDir = process.cwd();
@@ -33,6 +41,12 @@ function pwaBuildPlugin() {
     configResolved(config) {
       rootDir = config.root;
       outDir = resolve(config.root, config.build.outDir);
+    },
+    configureServer(server) {
+      server.middlewares.use(licenseMimeMiddleware);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(licenseMimeMiddleware);
     },
     async closeBundle() {
       const enginePath = resolve(rootDir, 'src/engine/amlich.js');

@@ -422,6 +422,7 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   await expect(page.locator('#about a[href="https://www.informatik.uni-leipzig.de/~duc/amlich/calrules.html"]')).toBeVisible();
   await expect(page.locator('#about a[href="https://web.archive.org/web/20250123093939/http://www.informatik.uni-leipzig.de/~duc/amlich/calrules.html"]')).toBeVisible();
   await expect(page.locator('#about a[href="https://web.archive.org/web/20241204143834/http://www.informatik.uni-leipzig.de/~duc/amlich/calrules_en.html"]')).toBeVisible();
+  await expect(page.locator('#about a[href="LICENSE"]')).toBeVisible();
 
   await snap('phone-about.png', { stabilizeBuildRow: true });
   await page.locator('#about-close').click();

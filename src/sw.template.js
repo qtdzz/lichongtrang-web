@@ -40,10 +40,13 @@ self.addEventListener('fetch', (event) => {
   // keeping it that way is what makes "works offline" a property rather than a hope.
   if (url.origin !== self.location.origin) return;
 
-  // A navigation is served the cached shell, so opening the app with no network works.
+  // A navigation is served the exact cached file if one matches (e.g. /LICENSE), otherwise the
+  // cached shell (index.html), so opening the app or reading the licence with no network works.
   if (request.mode === 'navigate') {
     event.respondWith(
-      caches.match('index.html').then((hit) => hit || fetch(request))
+      caches.match(request)
+        .then((hit) => hit || caches.match('index.html'))
+        .then((hit) => hit || fetch(request))
     );
     return;
   }
