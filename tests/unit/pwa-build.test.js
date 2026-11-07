@@ -70,9 +70,11 @@ describe('offline precache audit', () => {
     const html = await readFile(join(DIST, 'index.html'), 'utf8');
     const referenced = new Set();
 
-    for (const m of html.matchAll(/(?:href|src)="([^"]+)"/g)) {
-      const value = m[1];
+    for (const m of html.matchAll(/<([a-z0-9-]+)\b[^>]*?\b(?:href|src)="([^"]+)"/gi)) {
+      const tag = m[1].toLowerCase();
+      const value = m[2];
       if (value.startsWith('#') || value.startsWith('data:')) continue;
+      if (tag === 'a' && /^https?:\/\//.test(value)) continue;
       expect(value).not.toMatch(/^https?:|^\/\//);
       referenced.add(value.replace(/^\.?\//, ''));
     }
@@ -95,7 +97,11 @@ describe('offline precache audit', () => {
 
     const textFiles = ['index.html', 'manifest.webmanifest', 'sw.js', ...assetFiles];
     for (const file of textFiles) {
-      const text = await readFile(join(DIST, file), 'utf8');
+      const rawText = await readFile(join(DIST, file), 'utf8');
+      const text =
+        file === 'index.html'
+          ? rawText.replace(/<a\b[^>]*\bhref="https?:\/\/[^"]+"[^>]*>/gi, '')
+          : rawText;
       for (const m of text.matchAll(/https?:\/\/[^\s"')]+/g)) {
         const url = m[0];
         if (/w3\.org|schema\.org|example\.com|localhost/.test(url)) continue;

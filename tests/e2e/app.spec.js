@@ -410,10 +410,13 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   ]) {
     expect(aboutText).toContain(credit);
   }
-  for (const removedDetail of ['quy tắc chuyển đổi', 'chuỗi sóc', 'đông chí', 'Kotlin', 'Kiểm chứng']) {
+  for (const removedDetail of ['quy tắc chuyển đổi', 'chuỗi sóc', 'đông chí', 'Kotlin', 'Kiểm chứng', 'Giấy phép', 'Bản dựng']) {
     expect(aboutText).not.toContain(removedDetail);
   }
-  expect(aboutText).toMatch(/AGPL-3\.0/);
+  expect(aboutText).toMatch(/License:\s*AGPL-3\.0/);
+  expect(aboutText).toMatch(/Build/i);
+  await expect(page.locator('#about a[href="https://www.informatik.uni-leipzig.de/~duc/amlich/calrules.html"]')).toBeVisible();
+  await expect(page.locator('#about a[href="https://doi.org/10.1017/9781107415058"]')).toBeVisible();
 
   await snap('phone-about.png', { stabilizeBuildRow: true });
   await page.locator('#about-close').click();

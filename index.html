@@ -86,16 +86,6 @@
   <h2 id="sheet-title">Cài đặt</h2>
 
   <fieldset>
-    <legend>Ngôn ngữ</legend>
-    <p class="sheet-help">Ngày âm lịch luôn hiển thị theo tiếng Việt.</p>
-    <div class="choices" id="language-choices" role="radiogroup" aria-label="Ngôn ngữ">
-      <button class="choice" data-language="vi" role="radio" aria-checked="true">Tiếng Việt</button>
-      <button class="choice" data-language="en" role="radio" aria-checked="false">English</button>
-      <button class="choice" data-language="device" role="radio" aria-checked="false">Theo thiết bị</button>
-    </div>
-  </fieldset>
-
-  <fieldset>
     <legend>Tuần bắt đầu</legend>
     <div class="choices" id="weekstart-choices" role="radiogroup" aria-label="Tuần bắt đầu">
       <button class="choice" data-weekstart="1" role="radio" aria-checked="true">Thứ hai</button>
@@ -131,7 +121,7 @@
   </div>
   <button class="menu-row" id="menu-settings" aria-haspopup="dialog" aria-expanded="false">
     <span class="menu-row-label">Cài đặt</span>
-    <span class="menu-row-help">Ngôn ngữ, tuần bắt đầu, múi giờ tính ngày</span>
+    <span class="menu-row-help">Tuần bắt đầu, múi giờ tính ngày</span>
   </button>
   <button class="menu-row" id="menu-about" aria-haspopup="dialog" aria-expanded="false">
     <span class="menu-row-label">Giới thiệu</span>
@@ -150,15 +140,15 @@
 
   <h3 class="about-heading">Thuật toán &amp; tài liệu tham khảo</h3>
   <ul class="about-list">
-    <li><strong>Hồ Ngọc Đức</strong> — <em>How to compute the Vietnamese lunar calendar</em> (<em>amlich</em>)</li>
+    <li><strong>Hồ Ngọc Đức</strong> — <a class="about-link" href="https://www.informatik.uni-leipzig.de/~duc/amlich/calrules.html" target="_blank" rel="noopener noreferrer"><em>How to compute the Vietnamese lunar calendar</em></a> (<em>amlich</em>)</li>
     <li><strong>Jean Meeus</strong> — <em>Astronomical Algorithms</em></li>
-    <li><strong>E. M. Reingold &amp; N. Dershowitz</strong> — <em>Calendrical Calculations</em></li>
+    <li><strong>E. M. Reingold &amp; N. Dershowitz</strong> — <a class="about-link" href="https://doi.org/10.1017/9781107415058" target="_blank" rel="noopener noreferrer"><em>Calendrical Calculations</em></a></li>
     <li><strong>P. K. Seidelmann</strong> — <em>Explanatory Supplement to the Astronomical Almanac</em></li>
   </ul>
 
-  <p class="about-note">Giấy phép AGPL-3.0 — <a class="about-link" href="LICENSE">toàn văn giấy phép</a>.</p>
+  <p class="about-note">License: <a class="about-link" href="LICENSE">AGPL-3.0</a></p>
 
-  <p class="sheet-label about-build">Bản dựng</p>
+  <p class="sheet-label about-build">Build</p>
   <button class="build-row" id="build-row" title="Nhấn hai lần để sao chép">…</button>
 
   <button class="sheet-close" id="about-close">Xong</button>

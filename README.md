@@ -120,7 +120,7 @@ npm run test:e2e:update
 - **Tapping the month title zooms out:** first to a 12-year block (`2016 – 2027`), then to that
   year's 12 months. Picking a year opens its months, picking a month opens its grid, and `Escape`
   steps back out one level at a time.
-- The `☰` button at the leading edge opens the navigation drawer with **Cài đặt** (language, week
+- The `☰` button at the leading edge opens the navigation drawer with **Cài đặt** (week
   start, time zone) and **Giới thiệu** (algorithm credits, AGPL-3.0 licence, and the interactive
   build stamp).
 
@@ -141,11 +141,18 @@ The repository includes a multi-stage [`Dockerfile`](Dockerfile) and [`docker/ng
    on `/index.html`, `/sw.js`, and `/build-info.json`, and `Cache-Control: public, max-age=31536000, immutable`
    on Vite's content-hashed `/assets/*` bundles.
 
-To build and publish the image for your homeserver:
+Build and run the Docker image directly:
 
 ```sh
-make docker-build              # Builds the Docker image locally
-make docker-publish            # Builds and pushes the image to the registry
+docker build -t lichongtrang-web:latest .
+docker run -d -p 8080:80 --name lichongtrang-web lichongtrang-web:latest
+```
+
+Or use the [`Makefile`](Makefile) shortcuts to build and publish to a container registry:
+
+```sh
+make docker-build                              # Builds lichongtrang-web:latest locally
+make docker-publish IMAGE=registry/app:latest  # Builds and pushes to your registry
 ```
 
 Then on the homeserver:

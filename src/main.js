@@ -22,7 +22,7 @@ const STORAGE_KEY = 'lichongtrang.web.settings.v1';
 /* ------------------------------------------------------------------ state */
 
 function defaultSettings() {
-  return { language: 'vi', weekStart: 1, zone: '7', selectedIso: null };
+  return { weekStart: 1, zone: '7', selectedIso: null };
 }
 
 function loadSettings() {
@@ -61,15 +61,6 @@ function offsetHours() {
   return settings.zone === 'device' ? deviceOffsetHours() : Number(settings.zone);
 }
 
-/** The language to render frames in: Vietnamese, English, or whatever the browser asks for. */
-function language() {
-  if (settings.language === 'device') {
-    const nav = (navigator.language || 'vi').toLowerCase();
-    return nav.startsWith('en') ? 'en' : 'vi';
-  }
-  return settings.language;
-}
-
 function todayIso() {
   return engineToday(Date.now(), offsetHours()).iso;
 }
@@ -79,7 +70,7 @@ function monthGrid(year, month) {
 }
 
 function dayInfo(iso) {
-  return engineDay(iso, offsetHours(), language());
+  return engineDay(iso, offsetHours(), 'vi');
 }
 
 /** The build row: what engine bundle this page is running against. */
@@ -99,10 +90,10 @@ async function buildText() {
 let renderedWeekdaysKey = '';
 
 function renderWeekdays() {
-  const key = `${language()}-${settings.weekStart}`;
+  const key = String(settings.weekStart);
   if (key === renderedWeekdaysKey) return;
   renderedWeekdaysKey = key;
-  const names = weekdays(language(), settings.weekStart, false);
+  const names = weekdays('vi', settings.weekStart, false);
   const strip = $('weekdays');
   strip.textContent = '';
   for (const name of names) {
@@ -119,21 +110,21 @@ function renderTitle(grid) {
     const start = blockStart(selectorYear);
     $('title-gregorian').textContent = `${start} – ${start + 11}`;
     $('title-canchi').textContent = '';
-    el.setAttribute('aria-label', language() === 'en' ? 'Tap to pick a month' : 'Chạm để chọn tháng');
+    el.setAttribute('aria-label', 'Chạm để chọn tháng');
     return;
   }
   if (zoom === 'months') {
     // The lunar year comes from the year's midsummer, not 1 January, which can still be in the
     // previous lunar year - the same reference the phone's selector titles itself with.
     $('title-gregorian').textContent = String(selectorYear);
-    $('title-canchi').textContent = monthTitle(selectorYear, 6, language()).canChi;
-    el.setAttribute('aria-label', language() === 'en' ? 'Tap to go back to the month' : 'Chạm để về lịch tháng');
+    $('title-canchi').textContent = monthTitle(selectorYear, 6, 'vi').canChi;
+    el.setAttribute('aria-label', 'Chạm để về lịch tháng');
     return;
   }
-  const title = monthTitle(grid.year, grid.month, language());
+  const title = monthTitle(grid.year, grid.month, 'vi');
   $('title-gregorian').textContent = title.gregorian;
   $('title-canchi').textContent = title.canChi;
-  el.setAttribute('aria-label', language() === 'en' ? 'Tap for the year view' : 'Chạm để xem theo năm');
+  el.setAttribute('aria-label', 'Chạm để xem theo năm');
 }
 
 /** The first year of the twelve-year block a year belongs to. */
@@ -271,8 +262,7 @@ function renderLegend(grid) {
     return;
   }
   section.hidden = false;
-  $('legend-title').textContent =
-    language() === 'en' ? 'Holidays & solar terms this month' : 'Lễ & tiết khí trong tháng';
+  $('legend-title').textContent = 'Lễ & tiết khí trong tháng';
   list.textContent = '';
   const cellsByIso = new Map(grid.cells.map((c) => [c.iso, c]));
   for (const entry of grid.legend) {
@@ -348,10 +338,9 @@ function render() {
 /** The "back to today" pill, shown only when the view is away from the current month. */
 function renderTodayButton(away) {
   const button = $('today-button');
-  const english = language() === 'en';
   button.hidden = !away;
-  button.textContent = english ? 'Today' : 'Hôm nay';
-  button.setAttribute('aria-label', english ? 'Go to today' : 'Về hôm nay');
+  button.textContent = 'Hôm nay';
+  button.setAttribute('aria-label', 'Về hôm nay');
   document.body.classList.toggle('is-away', away);
 }
 
@@ -382,10 +371,7 @@ function renderSelector() {
     return;
   }
 
-  const english = language() === 'en';
-  el.setAttribute('aria-label', english
-    ? (zoom === 'years' ? 'Pick a year' : 'Pick a month')
-    : (zoom === 'years' ? 'Chọn năm' : 'Chọn tháng'));
+  el.setAttribute('aria-label', zoom === 'years' ? 'Chọn năm' : 'Chọn tháng');
   el.textContent = '';
 
   // Twelve years of the block the selector year is in, or the twelve months of the selector year.
@@ -410,7 +396,7 @@ function renderSelector() {
       button.textContent = String(value);
       if (value === view.year) button.classList.add('is-current');
     } else {
-      const title = monthTitle(selectorYear, value, language());
+      const title = monthTitle(selectorYear, value, 'vi');
       button.dataset.pickMonth = String(value);
       // The engine's own title for the month, less the year: the year is the header above, and the
       // name has to fit a cell on one line. The full title stays as the accessible name.
@@ -490,9 +476,6 @@ function selectDay(iso) {
 }
 
 function updateSettingsUi() {
-  for (const button of document.querySelectorAll('[data-language]')) {
-    button.setAttribute('aria-checked', String(button.dataset.language === settings.language));
-  }
   for (const button of document.querySelectorAll('[data-weekstart]')) {
     button.setAttribute('aria-checked', String(Number(button.dataset.weekstart) === settings.weekStart));
   }
@@ -570,13 +553,6 @@ document.addEventListener('click', (event) => {
     if (Date.now() - swipedAt < 500) return;
     zoom = '';
     selectDay(cell.dataset.iso);
-    return;
-  }
-  const language = event.target.closest('[data-language]');
-  if (language) {
-    settings.language = language.dataset.language;
-    saveSettings();
-    render();
     return;
   }
   const weekstart = event.target.closest('[data-weekstart]');
@@ -687,9 +663,7 @@ function setOfflineBadge() {
   const badge = $('offline-badge');
   // The label is set whenever the badge is considered at all. Shown without it, all that is left is the
   // pill's own background and radius: an unlabelled dark bar floating over the calendar.
-  badge.textContent = language() === 'en'
-    ? 'Offline — the calendar still works'
-    : 'Đang ngoại tuyến — lịch vẫn chạy';
+  badge.textContent = 'Đang ngoại tuyến — lịch vẫn chạy';
   if (navigator.onLine) {
     badge.hidden = true;
   } else {
