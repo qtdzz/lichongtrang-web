@@ -1,0 +1,26 @@
+<!--
+  Master vector icon for Lịch Ông Trăng (Option D: Pastel Iris badge + Buttercream "Ông Trăng" mascot).
+  To regenerate the PNG suite via librsvg:
+    rsvg-convert -w 512 -h 512 public/icons/icon.svg -o public/icons/icon-512.png
+    rsvg-convert -w 192 -h 192 public/icons/icon.svg -o public/icons/icon-192.png
+    rsvg-convert -w 180 -h 180 public/icons/icon.svg -o public/icons/apple-touch-icon.png
+  For icon-maskable-512.png, wrap the inner badge + mascot elements in
+  <g transform="translate(256 256) scale(0.91) translate(-256 -256)">...</g>
+  so the outer stroke radius sits at ~190.8px (inside the 204.8px 80% safe circle).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#d6c8f2"/>
+  <circle cx="256" cy="256" r="204" fill="#9678e3" stroke="#432787" stroke-width="10"/>
+  <path d="M 332 118 C 212 102, 116 188, 126 292 C 136 390, 228 438, 342 396 C 360 389, 366 365, 348 355 C 278 318, 258 228, 326 162 C 344 144, 350 121, 332 118 Z" fill="#7353c4" transform="translate(8, 10)"/>
+  <path d="M 332 118 C 212 102, 116 188, 126 292 C 136 390, 228 438, 342 396 C 360 389, 366 365, 348 355 C 278 318, 258 228, 326 162 C 344 144, 350 121, 332 118 Z" fill="#fff3a8" stroke="#432787" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M 272 136 C 190 150, 146 212, 152 284" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+  <ellipse cx="182" cy="276" rx="15" ry="9.5" fill="#ffa6b8" opacity="0.9"/>
+  <ellipse cx="254" cy="286" rx="14" ry="9" fill="#ffa6b8" opacity="0.9"/>
+  <circle cx="195" cy="252" r="11" fill="#432787"/>
+  <circle cx="191" cy="247" r="4" fill="#ffffff"/>
+  <circle cx="245" cy="260" r="11" fill="#432787"/>
+  <circle cx="241" cy="255" r="4" fill="#ffffff"/>
+  <path d="M 210 272 Q 218 284 230 274" fill="none" stroke="#432787" stroke-width="6.5" stroke-linecap="round"/>
+  <path d="M 366 202 Q 366 234 398 234 Q 366 234 366 266 Q 366 234 334 234 Q 366 234 366 202 Z" fill="#fffdf0" stroke="#432787" stroke-width="9" stroke-linejoin="round"/>
+  <circle cx="326" cy="306" r="12" fill="#f3edf7" stroke="#432787" stroke-width="7"/>
+</svg>

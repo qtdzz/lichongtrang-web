@@ -109,6 +109,44 @@ describe('offline precache audit', () => {
       }
     }
   });
+
+  it('emits valid SVG and exact-dimension PNG icons precached by the service worker', async () => {
+    const swText = await readFile(join(DIST, 'sw.js'), 'utf8');
+    const precached = new Set(JSON.parse(swText.match(/const PRECACHE = (\[[\s\S]*?\]);/)[1]));
+    const manifest = JSON.parse(await readFile(join(DIST, 'manifest.webmanifest'), 'utf8'));
+
+    expect(manifest.icons).toEqual([
+      { src: 'icons/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+      { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: 'icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ]);
+
+    for (const icon of manifest.icons) {
+      expect(precached.has(icon.src)).toBe(true);
+    }
+
+    const svgText = await readFile(join(DIST, 'icons/icon.svg'), 'utf8');
+    expect(svgText).toContain('width="512" height="512" viewBox="0 0 512 512"');
+    expect(svgText).toContain('rsvg-convert');
+    expect(svgText).toContain('#9678e3');
+    expect(svgText).toContain('#fff3a8');
+    expect(svgText).toContain('#432787');
+
+    const expectedPngs = [
+      ['icons/apple-touch-icon.png', 180, 180],
+      ['icons/icon-192.png', 192, 192],
+      ['icons/icon-512.png', 512, 512],
+      ['icons/icon-maskable-512.png', 512, 512],
+    ];
+    for (const [relPath, width, height] of expectedPngs) {
+      expect(precached.has(relPath)).toBe(true);
+      const buf = await readFile(join(DIST, relPath));
+      expect(buf.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+      expect(buf.readUInt32BE(16)).toBe(width);
+      expect(buf.readUInt32BE(20)).toBe(height);
+    }
+  });
 });
 
 describe('service worker offline execution', () => {
