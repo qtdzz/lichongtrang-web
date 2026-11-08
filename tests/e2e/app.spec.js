@@ -178,7 +178,7 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   expect(view.colors.contrast).toBeGreaterThanOrEqual(4.5);
   expect(view.undefineds).toBe(0);
   expect(view.selectorCells).toBe(0);
-  expect(await page.title()).toBe('Lịch Ông Trăng - Âm lịch Việt Nam');
+  expect(await page.title()).toBe('Lịch Ông Trăng');
 
   const header = await page.evaluate(() => {
     const box = document.querySelector('.title-gregorian').getBoundingClientRect();

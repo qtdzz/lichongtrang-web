@@ -1,7 +1,7 @@
 {
-  "name": "Lịch Ông Trăng - Âm lịch Việt Nam",
+  "name": "Lịch Ông Trăng",
   "short_name": "Lịch Ông Trăng",
-  "description": "Lịch âm dương Việt Nam: ngày âm lịch, can chi, tiết khí và ngày lễ. Chạy được khi không có mạng.",
+  "description": "Trang này chỉ để xem âm lịch Việt Nam",
   "lang": "vi",
   "dir": "ltr",
   "start_url": "./index.html",
