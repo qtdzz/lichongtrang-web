@@ -477,7 +477,7 @@ function selectDay(iso) {
   settings.selectedIso = iso;
   saveSettings();
   const gridEl = $('grid');
-  const sameMonthRendered = zoom === '' && renderedMonthKey === `${view.year}-${view.month}`;
+  const sameMonthRendered = zoom === '' && $('selector').hidden && renderedMonthKey === `${view.year}-${view.month}`;
   const nextCell = sameMonthRendered ? gridEl.querySelector(`.cell[data-iso="${iso}"]`) : null;
   if (nextCell) {
     if (prevIso && prevIso !== iso) {
@@ -713,6 +713,11 @@ document.addEventListener('keydown', (event) => {
     }
     // Escape steps one zoom level closer before it closes the menu, the settings or the credits.
     if (!stepOut()) openPanel(null);
+    return;
+  }
+  if (event.target.closest('#datepicker') && event.key === 'Enter' && !event.target.closest('#datepicker-cancel')) {
+    event.preventDefault();
+    applyDatePicker();
     return;
   }
   if (event.target.closest('#sheet, #datepicker')) return;

@@ -502,6 +502,16 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   expect(await page.locator('#datepicker').evaluate((el) => el.hidden)).toBe(true);
   expect(await dpButton.getAttribute('aria-expanded')).toBe('false');
 
+  // Same-month submit via Enter while zoomed out exits zoom view
+  await page.locator('#title').click();
+  expect((await zoomState()).selectorShown).toBe(true);
+  await dpButton.click();
+  await page.locator('#picker-day').selectOption('15');
+  await page.locator('#picker-day').press('Enter');
+  expect(await page.locator('#datepicker').evaluate((el) => el.hidden)).toBe(true);
+  expect((await zoomState()).selectorShown).toBe(false);
+  expect((await swipeState()).selected).toBe('2026-09-15');
+
   // Day clamping across leap and non-leap February, and submit while zoomed out
   await page.locator('#title').click();
   expect((await zoomState()).selectorShown).toBe(true);
