@@ -11,7 +11,7 @@ FROM node:22-bookworm-slim AS build
 
 WORKDIR /src
 COPY package.json ./
-RUN npm install --no-audit --no-fund
+RUN npm install --legacy-peer-deps --no-audit --no-fund
 COPY . /src
 # Builds dist/ (minified JS/CSS + build-info.json + sw.js) and runs Vitest unit, 132-answer JVM
 # corpus, offline precache audit, and service worker tests. Any failure stops the image build.
