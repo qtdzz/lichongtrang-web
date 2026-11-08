@@ -131,8 +131,8 @@ body {
 .top {
   display: flex;
   align-items: center;
-  gap: 4px;                      /* measured: the phone's arrows sat flush against the gear */
-  padding: 8px 10px;
+  gap: 2px;                      /* measured: the phone's arrows sat flush against the gear */
+  padding: 8px 6px;
   position: sticky;
   top: 0;
   background: var(--md-sys-color-surface);
@@ -183,7 +183,7 @@ body {
   background: transparent;
   color: inherit;
   text-align: center;
-  padding: 6px 12px;
+  padding: 6px 4px;
   border-radius: var(--md-sys-shape-corner-full);
   cursor: pointer;
   font: inherit;
@@ -195,7 +195,7 @@ body {
 
 .title-gregorian {
   display: block;
-  font-size: 18px;
+  font-size: clamp(14px, 4.5vw, 18px);
   font-weight: 600;
   line-height: 24px;
   white-space: nowrap;

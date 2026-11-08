@@ -194,6 +194,29 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   expect(header.last).toMatch(/nav-balance/);
   expect(header.canChi).toBe('Năm Bính Ngọ');
 
+  // Verify 2-digit month titles ("Tháng 12 2026") do not truncate on narrow 360px phone screens
+  await page.setViewportSize({ width: 360, height: 844 });
+  await page.locator('#datepicker-button').click();
+  await page.locator('#picker-month').selectOption('12');
+  await page.locator('#datepicker-submit').click();
+  const narrowHeader = await page.evaluate(() => {
+    const el = document.getElementById('title-gregorian');
+    const canChiEl = document.getElementById('title-canchi');
+    return {
+      text: el.textContent.trim(),
+      truncated: el.scrollWidth > el.clientWidth,
+      canChiTruncated: canChiEl.scrollWidth > canChiEl.clientWidth,
+    };
+  });
+  expect(narrowHeader).toEqual({
+    text: 'Tháng 12 2026',
+    truncated: false,
+    canChiTruncated: false,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('#today-button').click();
+  await page.waitForTimeout(100);
+
   for (const ratio of Object.values(view.legendContrast ?? {})) {
     if (ratio != null) expect(ratio).toBeGreaterThanOrEqual(4.5);
   }
