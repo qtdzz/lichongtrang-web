@@ -39,12 +39,17 @@
   </button>
   <button class="nav" id="next" aria-label="Tháng sau">›</button>
   <!--
-    An empty slot the width of the menu button, and nothing else. The ☰ belongs at the leading edge -
-    that is where a drawer comes from - but the arrows have to stay symmetric around the month title,
-    which is the anchor of a calendar. Measured with the ☰ at the trailing edge, the title's centre sits
-    30px left of the viewport's; with it leading and no balance, 30px right. This is what makes it 0.
+    The date picker button sits opposite ☰ at the trailing edge, using the same 48px slot so the
+    arrows stay symmetric around the month title.
   -->
-  <span class="nav-balance" aria-hidden="true"></span>
+  <button class="nav nav-balance" id="datepicker-button" type="button" aria-label="Chọn ngày" aria-haspopup="dialog" aria-expanded="false">
+    <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+      <line x1="16" y1="2" x2="16" y2="6"></line>
+      <line x1="8" y1="2" x2="8" y2="6"></line>
+      <line x1="3" y1="10" x2="21" y2="10"></line>
+    </svg>
+  </button>
 </header>
 
 <main id="main">
@@ -105,6 +110,28 @@
   </fieldset>
 
   <button class="sheet-close" id="sheet-close">Xong</button>
+</section>
+
+<section class="datepicker-popup" id="datepicker" role="dialog" aria-modal="true" aria-labelledby="datepicker-title" hidden>
+  <h2 class="datepicker-title" id="datepicker-title">Chọn ngày dương lịch</h2>
+  <div class="datepicker-fields">
+    <label class="datepicker-field">
+      <span class="datepicker-label">Ngày</span>
+      <select class="datepicker-select" id="picker-day" aria-label="Ngày"></select>
+    </label>
+    <label class="datepicker-field">
+      <span class="datepicker-label">Tháng</span>
+      <select class="datepicker-select" id="picker-month" aria-label="Tháng"></select>
+    </label>
+    <label class="datepicker-field">
+      <span class="datepicker-label">Năm</span>
+      <select class="datepicker-select" id="picker-year" aria-label="Năm"></select>
+    </label>
+  </div>
+  <div class="datepicker-actions">
+    <button class="datepicker-btn is-secondary" id="datepicker-cancel" type="button">Hủy</button>
+    <button class="datepicker-btn is-primary" id="datepicker-submit" type="button">Xem ngày</button>
+  </div>
 </section>
 
 <!--

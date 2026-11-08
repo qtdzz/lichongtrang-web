@@ -477,6 +477,54 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
     await page.waitForTimeout(120);
   }
 
+  // ---- Date picker popup
+  const dpButton = page.locator('#datepicker-button');
+  await expect(dpButton).toBeVisible();
+  const dpBox = await dpButton.boundingBox();
+  expect(dpBox.width).toBeGreaterThanOrEqual(48);
+  expect(dpBox.height).toBeGreaterThanOrEqual(48);
+
+  // Open while zoomed out to verify zoom reset on submit, and test pre-fill + cancel first
+  await dpButton.click();
+  await page.waitForSelector('#datepicker:not([hidden])', { timeout: 4000 });
+  expect(await dpButton.getAttribute('aria-expanded')).toBe('true');
+  expect(await page.locator('#picker-year').inputValue()).toBe('2026');
+  expect(await page.locator('#picker-month').inputValue()).toBe('9');
+  expect(await page.locator('#picker-day').inputValue()).toBe('28');
+
+  // Keyboard isolation inside #datepicker
+  await page.locator('#picker-day').focus();
+  await page.keyboard.press('PageDown');
+  expect((await swipeState()).title).toBe(before.title);
+
+  // Cancel leaves calendar state unchanged
+  await page.locator('#datepicker-cancel').click();
+  expect(await page.locator('#datepicker').evaluate((el) => el.hidden)).toBe(true);
+  expect(await dpButton.getAttribute('aria-expanded')).toBe('false');
+
+  // Day clamping across leap and non-leap February, and submit while zoomed out
+  await page.locator('#title').click();
+  expect((await zoomState()).selectorShown).toBe(true);
+  await dpButton.click();
+  await page.locator('#picker-year').selectOption('2026');
+  await page.locator('#picker-month').selectOption('1');
+  await page.locator('#picker-day').selectOption('31');
+  await page.locator('#picker-month').selectOption('2');
+  expect(await page.locator('#picker-day').inputValue()).toBe('28');
+  await page.locator('#picker-year').selectOption('2024');
+  expect(await page.locator('#picker-day').evaluate((el) => el.options.length)).toBe(29);
+  await page.locator('#picker-day').selectOption('29');
+  await page.locator('#datepicker-submit').click();
+
+  expect(await page.locator('#datepicker').evaluate((el) => el.hidden)).toBe(true);
+  expect((await zoomState()).selectorShown).toBe(false);
+  expect(await swipeState()).toEqual({
+    title: 'Tháng 2 2024',
+    selected: '2024-02-29',
+  });
+  await page.locator('#today-button').click();
+  await page.waitForTimeout(120);
+
   // ---- Menu, Settings, and About dialogs
   await page.locator('#menu-button').click({ timeout: 4000 });
   await page.waitForFunction(() => document.getElementById('menu').classList.contains('is-open'), { timeout: 4000 });

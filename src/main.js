@@ -517,7 +517,84 @@ const PANELS = [
   { id: 'menu', opener: 'menu-button', slides: true },
   { id: 'sheet', opener: 'menu-settings' },
   { id: 'about', opener: 'menu-about' },
+  { id: 'datepicker', opener: 'datepicker-button' },
 ];
+
+let pickerInitialized = false;
+
+function daysInMonth(year, month) {
+  if (month === 2) {
+    const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+    return leap ? 29 : 28;
+  }
+  return [4, 6, 9, 11].includes(month) ? 30 : 31;
+}
+
+function ensureDatePickerOptions() {
+  if (pickerInitialized) return;
+  pickerInitialized = true;
+  const monthSelect = $('picker-month');
+  const yearSelect = $('picker-year');
+  monthSelect.textContent = '';
+  for (let m = 1; m <= 12; m += 1) {
+    const opt = document.createElement('option');
+    opt.value = String(m);
+    opt.textContent = `Tháng ${m}`;
+    monthSelect.append(opt);
+  }
+  yearSelect.textContent = '';
+  for (let y = LIMITS.minYear; y <= LIMITS.maxYear; y += 1) {
+    const opt = document.createElement('option');
+    opt.value = String(y);
+    opt.textContent = String(y);
+    yearSelect.append(opt);
+  }
+  monthSelect.addEventListener('change', syncPickerDays);
+  yearSelect.addEventListener('change', syncPickerDays);
+}
+
+function syncPickerDays(preferredDay) {
+  const daySelect = $('picker-day');
+  const year = Number($('picker-year').value) || view.year;
+  const month = Number($('picker-month').value) || view.month;
+  const maxDay = daysInMonth(year, month);
+  const currentDay = typeof preferredDay === 'number' ? preferredDay : (Number(daySelect.value) || 1);
+  const clampedDay = Math.min(Math.max(currentDay, 1), maxDay);
+  if (daySelect.options.length !== maxDay) {
+    daySelect.textContent = '';
+    for (let d = 1; d <= maxDay; d += 1) {
+      const opt = document.createElement('option');
+      opt.value = String(d);
+      opt.textContent = String(d);
+      daySelect.append(opt);
+    }
+  }
+  daySelect.value = String(clampedDay);
+}
+
+function populateDatePicker(iso) {
+  ensureDatePickerOptions();
+  const fallback = todayIso();
+  const target = iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : fallback;
+  const year = clampYear(Number(target.slice(0, 4)));
+  const month = Math.min(Math.max(Number(target.slice(5, 7)), 1), 12);
+  const day = Number(target.slice(8, 10));
+  $('picker-year').value = String(year);
+  $('picker-month').value = String(month);
+  syncPickerDays(day);
+}
+
+function applyDatePicker() {
+  const year = clampYear(Number($('picker-year').value));
+  const month = Math.min(Math.max(Number($('picker-month').value), 1), 12);
+  const maxDay = daysInMonth(year, month);
+  const day = Math.min(Math.max(Number($('picker-day').value), 1), maxDay);
+  const iso = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  view = { year, month };
+  zoom = '';
+  openPanel(null);
+  selectDay(iso);
+}
 
 function openPanel(id) {
   for (const panel of PANELS) {
@@ -531,6 +608,9 @@ function openPanel(id) {
   // moment is worse than one that appears already answered.
   if (id === 'about') {
     buildText().then((text) => { $('build-row').textContent = text; });
+  } else if (id === 'datepicker') {
+    populateDatePicker(settings.selectedIso || todayIso());
+    $('picker-day').focus();
   }
 }
 
@@ -604,6 +684,12 @@ document.addEventListener('click', (event) => {
   else if (event.target.closest('#menu-button')) openPanel('menu');
   else if (event.target.closest('#menu-settings')) openPanel('sheet');
   else if (event.target.closest('#menu-about')) openPanel('about');
+  else if (event.target.closest('#datepicker-button')) {
+    const isOpen = !$('datepicker').hidden;
+    openPanel(isOpen ? null : 'datepicker');
+  }
+  else if (event.target.closest('#datepicker-submit')) applyDatePicker();
+  else if (event.target.closest('#datepicker-cancel')) openPanel(null);
   else if (event.target.closest('#menu-close') || event.target.closest('#about-close')) openPanel(null);
   else if (event.target.closest('#sheet-close') || event.target.closest('#sheet-backdrop')) openPanel(null);
   else if (event.target.closest('#title')) cycleZoom();
@@ -621,11 +707,15 @@ for (const done of ['pointerup', 'pointercancel', 'pointerleave']) {
 
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
+    if (!$('sheet-backdrop').hidden) {
+      openPanel(null);
+      return;
+    }
     // Escape steps one zoom level closer before it closes the menu, the settings or the credits.
     if (!stepOut()) openPanel(null);
     return;
   }
-  if (event.target.closest('#sheet')) return;
+  if (event.target.closest('#sheet, #datepicker')) return;
   // The page keys step by whatever unit is on screen, the same as the arrows do.
   if (event.key === 'PageUp') { shiftZoom(-1); event.preventDefault(); return; }
   if (event.key === 'PageDown') { shiftZoom(1); event.preventDefault(); return; }
