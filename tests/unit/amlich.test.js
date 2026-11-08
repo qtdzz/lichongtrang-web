@@ -1,13 +1,11 @@
 import { readFile } from 'node:fs/promises';
-import { gunzipSync } from 'node:zlib';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 import { LIMITS, limits, today, monthTitle, weekdays, monthGrid, day, WebApi } from '../../src/engine/amlich.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const dumpBytes = await readFile(join(__dirname, 'fixtures/engine-dump.json.gz'));
-const dump = JSON.parse(gunzipSync(dumpBytes).toString('utf8'));
+const dump = JSON.parse(await readFile(join(__dirname, 'fixtures/engine-dump.json'), 'utf8'));
 
 describe('amlich unit tests', () => {
   it('exposes supported year limits', () => {

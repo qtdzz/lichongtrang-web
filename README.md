@@ -18,7 +18,7 @@ detail panel — running in any modern browser and working with no network at al
   plugin writes `dist/build-info.json` and generates `dist/sw.js` from [`src/sw.template.js`](src/sw.template.js)
   with the exact list of emitted files and content hash.
 - **Vitest (`tests/unit/`):** Runs fast unit tests, replays all **132** reference answers from the
-  Android/JVM engine dump (`tests/unit/fixtures/engine-dump.json.gz`), audits offline precache
+  Android/JVM engine dump (`tests/unit/fixtures/engine-dump.json`), audits offline precache
   coverage across `dist/`, and executes `dist/sw.js` in an offline sandbox.
 - **Playwright Test (`tests/e2e/`):** Runs end-to-end behavioral, layout, contrast, and offline
   checks across `chromium`, `firefox`, and `webkit`, and verifies pixel-for-pixel visual parity
@@ -46,7 +46,7 @@ lichongtrang-web/
 ├── tests/
 │   ├── unit/
 │   │   ├── fixtures/
-│   │   │   └── engine-dump.json.gz   # 132 reference answers from the Android/JVM engine
+│   │   │   └── engine-dump.json      # 132 reference answers from the Android/JVM engine
 │   │   ├── amlich.test.js            # Calendar unit tests + 132-answer JVM corpus check
 │   │   └── pwa-build.test.js         # Offline precache audit + service worker VM test
 │   └── e2e/
