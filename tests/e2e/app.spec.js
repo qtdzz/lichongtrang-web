@@ -467,16 +467,79 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   await page.waitForTimeout(120);
   expect((await swipeState()).title).toBe(before.title);
 
-  // Header prev/next buttons also trigger Shared X-Axis entrance animations
+  // Header prev/next buttons also trigger Shared X-Axis entrance animations, including rapid mid-animation clicks
   await page.evaluate(() => { window.__gridAnimations = []; });
+  await page.locator('#prev').click();
+  await page.waitForTimeout(20);
   await page.locator('#prev').click();
   await page.waitForTimeout(260);
   await page.locator('#next').click();
+  await page.waitForTimeout(20);
+  await page.locator('#next').click();
   await page.waitForTimeout(260);
   const buttonAnims = await page.evaluate(() => window.__gridAnimations.map((a) => a.name));
-  expect(buttonAnims).toContain('grid-slide-prev');
-  expect(buttonAnims).toContain('grid-slide-next');
+  expect(buttonAnims.filter((n) => n === 'grid-slide-prev').length).toBe(2);
+  expect(buttonAnims.filter((n) => n === 'grid-slide-next').length).toBe(2);
   expect((await swipeState()).title).toBe(before.title);
+
+  // Mostly-vertical scroll locks out horizontal drag hijacking even if pointer later drifts sideways
+  await page.mouse.move(swipeMid, swipeY);
+  await page.mouse.down();
+  await page.mouse.move(swipeMid - 2, swipeY - 30, { steps: 3 });
+  await page.mouse.move(swipeMid - 80, swipeY - 35, { steps: 4 });
+  expect(await page.evaluate(() => document.getElementById('grid').style.transform)).toBe('');
+  await page.mouse.up();
+  expect((await swipeState()).title).toBe(before.title);
+
+  // Velocity-based flick (>= 25px, < 60px) commits even if final pointermove has zero dx
+  await page.mouse.move(swipeMid, swipeY);
+  await page.mouse.down();
+  await page.mouse.move(swipeMid - 40, swipeY, { steps: 3 });
+  await page.mouse.move(swipeMid - 40, swipeY + 1, { steps: 1 });
+  await page.mouse.up();
+  await page.waitForTimeout(260);
+  expect((await swipeState()).title).not.toBe(before.title);
+  await page.locator('#today-button').click();
+  await page.waitForTimeout(120);
+  expect((await swipeState()).title).toBe(before.title);
+
+  // Boundary overscroll at 1900-01 applies hyperbolic rubber-band without opacity fade or month shift
+  await page.locator('#datepicker-button').click();
+  await page.locator('#picker-year').selectOption('1900');
+  await page.locator('#picker-month').selectOption('1');
+  await page.locator('#picker-day').selectOption('1');
+  await page.locator('#datepicker-submit').click();
+  await page.evaluate(() => { window.__gridAnimations = []; });
+  await page.locator('#prev').click();
+  await page.mouse.move(swipeMid - 40, swipeY);
+  await page.mouse.down();
+  await page.mouse.move(swipeMid + 56, swipeY, { steps: 4 });
+  const boundaryDrag = await page.evaluate(() => ({
+    transform: document.getElementById('grid').style.transform,
+    opacity: document.getElementById('grid').style.opacity,
+  }));
+  expect(boundaryDrag.transform).toBe('translateX(32px)');
+  expect(boundaryDrag.opacity).toBe('');
+  await page.mouse.up();
+  await page.waitForTimeout(220);
+  expect((await swipeState()).title).toBe('Tháng 1 1900');
+  expect(await page.evaluate(() => window.__gridAnimations.length)).toBe(0);
+  await page.locator('#today-button').click();
+  await page.waitForTimeout(120);
+
+  // prefers-reduced-motion: reduce suppresses both inline drag transforms and entrance animations
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.evaluate(() => { window.__gridAnimations = []; });
+  await page.mouse.move(swipeMid, swipeY);
+  await page.mouse.down();
+  await page.mouse.move(swipeMid - 70, swipeY, { steps: 4 });
+  expect(await page.evaluate(() => document.getElementById('grid').style.transform)).toBe('');
+  await page.mouse.up();
+  expect((await swipeState()).title).not.toBe(before.title);
+  expect(await page.evaluate(() => window.__gridAnimations.length)).toBe(0);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.locator('#today-button').click();
+  await page.waitForTimeout(120);
 
   // ---- Zoom levels
   const zoomState = () => page.evaluate(() => {
@@ -688,6 +751,8 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
     expect(ratio).toBeGreaterThanOrEqual(4.5);
   }
   await page.locator(`.cell[data-iso="${holidayIso}"]`).click();
+  await expect(page.locator(`.cell[data-iso="${holidayIso}"]`)).toHaveClass(/is-selected/);
+  await page.waitForTimeout(160);
   const selectedHolidayContrastDark = await page.evaluate((iso) => {
     const el = document.querySelector(`.cell[data-iso="${iso}"] .cell-solar`);
     const cell = el.closest('.cell');

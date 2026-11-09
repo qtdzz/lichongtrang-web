@@ -168,6 +168,10 @@ function cellLunarText(cell) {
 
 function renderGrid(grid) {
   const el = $('grid');
+  el.style.transition = '';
+  el.style.transform = '';
+  el.style.opacity = '';
+  el.classList.remove('is-entering-next', 'is-entering-prev');
   el.textContent = '';
   let rowEl = null;
   for (let i = 0; i < grid.cells.length; i += 1) {
@@ -675,7 +679,7 @@ document.addEventListener('click', (event) => {
   const cell = event.target.closest('.cell, [data-iso]');
   if (cell && cell.dataset.iso) {
     // A click this soon after a swipe is the tail of that drag, not a choice of day.
-    if (Date.now() - swipedAt < 500) return;
+    if (performance.now() - swipedAt < 100) return;
     zoom = '';
     selectDay(cell.dataset.iso);
     return;
@@ -777,12 +781,12 @@ const SWIPE_MIN_PX = 60;
 const SWIPE_FLICK_MIN_PX = 25;
 const SWIPE_FLICK_VELOCITY = 0.35;
 let dragFrom = null;
-let swipedAt = 0;
+let swipedAt = -Infinity;
 
 function snapBackGrid() {
   const gridEl = $('grid');
   if (!gridEl.style.transform && !gridEl.style.opacity) return;
-  if (reducedMotion()) {
+  if (!gridEl.style.transform || gridEl.style.transform === 'translateX(0px)' || reducedMotion()) {
     gridEl.style.transition = '';
     gridEl.style.transform = '';
     gridEl.style.opacity = '';
@@ -807,8 +811,9 @@ $('grid').addEventListener('animationend', (event) => {
 });
 
 $('grid').addEventListener('pointerdown', (event) => {
-  if (!event.isPrimary) {
+  if (!event.isPrimary || event.button !== 0) {
     dragFrom = null;
+    snapBackGrid();
     return;
   }
   const now = performance.now();
@@ -823,17 +828,31 @@ $('grid').addEventListener('pointerdown', (event) => {
 });
 $('grid').addEventListener('pointermove', (event) => {
   if (!dragFrom || !event.isPrimary) return;
+  if (event.buttons === 0) {
+    dragFrom = null;
+    snapBackGrid();
+    return;
+  }
   const dx = event.clientX - dragFrom.x;
   const dy = event.clientY - dragFrom.y;
+  const now = performance.now();
   if (!dragFrom.dragged) {
-    if (Math.abs(dx) <= 6 || Math.abs(dx) <= Math.abs(dy)) return;
+    if (Math.abs(dy) > 6 && Math.abs(dy) >= Math.abs(dx)) {
+      dragFrom = null;
+      return;
+    }
+    if (Math.abs(dx) <= 6) {
+      dragFrom.lastX = event.clientX;
+      dragFrom.lastTime = now;
+      return;
+    }
     dragFrom.dragged = true;
     try { event.currentTarget.setPointerCapture?.(event.pointerId); } catch {}
   }
-  const now = performance.now();
   const dt = now - dragFrom.lastTime;
-  if (dt > 0) {
-    dragFrom.velocityX = (event.clientX - dragFrom.lastX) / dt;
+  const stepX = event.clientX - dragFrom.lastX;
+  if (dt > 0 && (stepX !== 0 || dt > 40)) {
+    dragFrom.velocityX = stepX / dt;
     dragFrom.lastX = event.clientX;
     dragFrom.lastTime = now;
   }
@@ -871,11 +890,11 @@ $('grid').addEventListener('pointerup', (event) => {
     Math.abs(releaseVx) >= SWIPE_FLICK_VELOCITY;
   const isSwipe = Math.abs(dx) > Math.abs(dy) && canShiftMonth(delta) && (Math.abs(dx) >= SWIPE_MIN_PX || isFlick);
   if (!isSwipe) {
-    if (from.dragged) swipedAt = Date.now();
+    swipedAt = from.dragged ? performance.now() : -Infinity;
     snapBackGrid();
     return;
   }
-  swipedAt = Date.now();
+  swipedAt = performance.now();
   shiftMonth(delta);
 });
 
