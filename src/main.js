@@ -431,6 +431,29 @@ function renderSelector() {
 
 /* ------------------------------------------------------------------ interaction */
 
+function reducedMotion() {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+}
+
+function canShiftMonth(delta) {
+  let { year, month } = view;
+  month += delta;
+  while (month > 12) { month -= 12; year += 1; }
+  while (month < 1) { month += 12; year -= 1; }
+  return inRange(year);
+}
+
+function animateGrid(delta) {
+  const gridEl = $('grid');
+  gridEl.style.transition = '';
+  gridEl.style.transform = '';
+  gridEl.style.opacity = '';
+  gridEl.classList.remove('is-entering-next', 'is-entering-prev');
+  if (reducedMotion()) return;
+  void gridEl.offsetWidth;
+  gridEl.classList.add(delta > 0 ? 'is-entering-next' : 'is-entering-prev');
+}
+
 function shiftMonth(delta) {
   let { year, month } = view;
   month += delta;
@@ -439,6 +462,7 @@ function shiftMonth(delta) {
   if (!inRange(year)) return;
   view = { year, month };
   render();
+  animateGrid(delta);
 }
 
 /** The arrows step by whatever unit is on screen: a month, a year, or a whole twelve-year block. */
@@ -750,22 +774,109 @@ document.addEventListener('keydown', (event) => {
 // vertical, so an ordinary sideways-ish scroll never changes the month. The click the browser then
 // fires is ignored below, otherwise the same gesture would also select whichever day it started on.
 const SWIPE_MIN_PX = 60;
+const SWIPE_FLICK_MIN_PX = 25;
+const SWIPE_FLICK_VELOCITY = 0.35;
 let dragFrom = null;
 let swipedAt = 0;
 
-$('grid').addEventListener('pointerdown', (event) => {
-  dragFrom = event.isPrimary ? { x: event.clientX, y: event.clientY } : null;
+function snapBackGrid() {
+  const gridEl = $('grid');
+  if (!gridEl.style.transform && !gridEl.style.opacity) return;
+  if (reducedMotion()) {
+    gridEl.style.transition = '';
+    gridEl.style.transform = '';
+    gridEl.style.opacity = '';
+    return;
+  }
+  gridEl.style.transition =
+    'transform 160ms var(--md-sys-motion-easing-emphasized-decelerate), opacity 140ms var(--md-sys-motion-easing-standard)';
+  gridEl.style.transform = '';
+  gridEl.style.opacity = '';
+}
+
+$('grid').addEventListener('transitionend', (event) => {
+  if (event.target === event.currentTarget && event.propertyName === 'transform') {
+    event.currentTarget.style.transition = '';
+  }
 });
-$('grid').addEventListener('pointercancel', () => { dragFrom = null; });
+
+$('grid').addEventListener('animationend', (event) => {
+  if (event.animationName === 'grid-slide-next' || event.animationName === 'grid-slide-prev') {
+    event.currentTarget.classList.remove('is-entering-next', 'is-entering-prev');
+  }
+});
+
+$('grid').addEventListener('pointerdown', (event) => {
+  if (!event.isPrimary) {
+    dragFrom = null;
+    return;
+  }
+  const now = performance.now();
+  dragFrom = {
+    x: event.clientX,
+    y: event.clientY,
+    lastX: event.clientX,
+    lastTime: now,
+    velocityX: 0,
+    dragged: false,
+  };
+});
+$('grid').addEventListener('pointermove', (event) => {
+  if (!dragFrom || !event.isPrimary) return;
+  const dx = event.clientX - dragFrom.x;
+  const dy = event.clientY - dragFrom.y;
+  if (!dragFrom.dragged) {
+    if (Math.abs(dx) <= 6 || Math.abs(dx) <= Math.abs(dy)) return;
+    dragFrom.dragged = true;
+    try { event.currentTarget.setPointerCapture?.(event.pointerId); } catch {}
+  }
+  const now = performance.now();
+  const dt = now - dragFrom.lastTime;
+  if (dt > 0) {
+    dragFrom.velocityX = (event.clientX - dragFrom.lastX) / dt;
+    dragFrom.lastX = event.clientX;
+    dragFrom.lastTime = now;
+  }
+  if (reducedMotion()) return;
+  const gridEl = $('grid');
+  gridEl.classList.remove('is-entering-next', 'is-entering-prev');
+  gridEl.style.transition = 'none';
+  if (dx !== 0 && !canShiftMonth(dx < 0 ? 1 : -1)) {
+    const overscroll = dx / (1 + Math.abs(dx) / 48);
+    gridEl.style.transform = `translateX(${Math.round(overscroll * 10) / 10}px)`;
+    gridEl.style.opacity = '';
+    return;
+  }
+  const width = gridEl.offsetWidth || 360;
+  const opacity = Math.max(1 - (Math.abs(dx) / width) * 0.55, 0.35);
+  gridEl.style.transform = `translateX(${Math.round(dx * 10) / 10}px)`;
+  gridEl.style.opacity = String(Math.round(opacity * 100) / 100);
+});
+$('grid').addEventListener('pointercancel', () => {
+  dragFrom = null;
+  snapBackGrid();
+});
 $('grid').addEventListener('pointerup', (event) => {
   const from = dragFrom;
   dragFrom = null;
   if (!from) return;
   const dx = event.clientX - from.x;
   const dy = event.clientY - from.y;
-  if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) <= Math.abs(dy)) return;
+  const delta = dx < 0 ? 1 : -1;
+  const rested = performance.now() - from.lastTime > 40;
+  const releaseVx = rested ? 0 : from.velocityX;
+  const isFlick =
+    Math.abs(dx) >= SWIPE_FLICK_MIN_PX &&
+    Math.sign(releaseVx) === Math.sign(dx) &&
+    Math.abs(releaseVx) >= SWIPE_FLICK_VELOCITY;
+  const isSwipe = Math.abs(dx) > Math.abs(dy) && canShiftMonth(delta) && (Math.abs(dx) >= SWIPE_MIN_PX || isFlick);
+  if (!isSwipe) {
+    if (from.dragged) swipedAt = Date.now();
+    snapBackGrid();
+    return;
+  }
   swipedAt = Date.now();
-  shiftMonth(dx < 0 ? 1 : -1);
+  shiftMonth(delta);
 });
 
 /* ------------------------------------------------------------------ offline */

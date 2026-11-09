@@ -236,6 +236,10 @@ body {
 
 /* ---------- month grid ---------- */
 
+.month-grid {
+  overflow-x: clip;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -244,6 +248,33 @@ body {
      scroll and never delivers it as a pointer drag. Vertical scrolling still scrolls the page. */
   touch-action: pan-y;
   padding: 0 8px 8px;
+}
+
+@keyframes grid-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes grid-slide-next {
+  from { transform: translateX(28px); }
+  to { transform: none; }
+}
+
+@keyframes grid-slide-prev {
+  from { transform: translateX(-28px); }
+  to { transform: none; }
+}
+
+.grid.is-entering-next {
+  animation:
+    grid-slide-next 200ms var(--md-sys-motion-easing-emphasized-decelerate),
+    grid-fade-in 140ms var(--md-sys-motion-easing-standard);
+}
+
+.grid.is-entering-prev {
+  animation:
+    grid-slide-prev 200ms var(--md-sys-motion-easing-emphasized-decelerate),
+    grid-fade-in 140ms var(--md-sys-motion-easing-standard);
 }
 
 .cell {

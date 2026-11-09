@@ -306,7 +306,7 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
     await page.mouse.down();
     await page.mouse.move(toX, swipeY, { steps: 8 });
     await page.mouse.up();
-    await page.waitForTimeout(150);
+    await page.waitForTimeout(260);
   };
 
   const notToday = await page.evaluate(() => {
@@ -341,10 +341,64 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
     return { top: Math.round(rect.top), height: Math.round(rect.height) };
   });
 
+  // 1:1 direct manipulation during drag (no 28px hard stop) and snap-back when released under threshold
+  await page.mouse.move(swipeMid, swipeY);
+  await page.mouse.down();
+  await page.mouse.move(swipeMid - 110, swipeY, { steps: 6 });
+  const farDrag = await page.evaluate(() => {
+    const grid = document.getElementById('grid');
+    return {
+      transform: grid.style.transform,
+      opacity: Number(grid.style.opacity || 1),
+      overflowX: getComputedStyle(document.querySelector('.month-grid')).overflowX,
+      scrollWidth: document.documentElement.scrollWidth,
+      innerWidth: window.innerWidth,
+    };
+  });
+  expect(farDrag.transform).toBe('translateX(-110px)');
+  expect(farDrag.opacity).toBeLessThan(1);
+  expect(farDrag.overflowX).toBe('clip');
+  expect(farDrag.scrollWidth).toBeLessThanOrEqual(farDrag.innerWidth + 1);
+
+  // Pull back below 60px threshold, pause so release velocity is 0, and release to verify snap-back
+  await page.mouse.move(swipeMid - 36, swipeY, { steps: 4 });
+  await page.waitForTimeout(60);
+  await page.mouse.up();
+  await page.waitForTimeout(220);
+  const afterSnapBack = await page.evaluate(() => ({
+    transform: document.getElementById('grid').style.transform,
+    opacity: document.getElementById('grid').style.opacity,
+    title: document.getElementById('title-gregorian').textContent,
+    selected: document.querySelector('.cell.is-selected')?.dataset.iso ?? null,
+  }));
+  expect(afterSnapBack).toEqual({
+    transform: '',
+    opacity: '',
+    title: before.title,
+    selected: notToday,
+  });
+
+  await page.evaluate(() => {
+    window.__gridAnimations = [];
+    document.getElementById('grid').addEventListener('animationstart', (e) => {
+      window.__gridAnimations.push({
+        name: e.animationName,
+        classes: [...e.currentTarget.classList],
+      });
+    });
+  });
+
   await drag(swipeMid + 60, swipeMid - 60);
   const afterLeft = await swipeState();
   expect(afterLeft.title).not.toBe(before.title);
   if (afterLeft.selected) expect(afterLeft.selected).toBe(before.selected);
+  const swipeLeftAnim = await page.evaluate(() => ({
+    recorded: window.__gridAnimations,
+    settledClasses: [...document.getElementById('grid').classList],
+  }));
+  expect(swipeLeftAnim.recorded.some((a) => a.name === 'grid-slide-next' && a.classes.includes('is-entering-next'))).toBe(true);
+  expect(swipeLeftAnim.recorded.some((a) => a.name === 'grid-fade-in')).toBe(true);
+  expect(swipeLeftAnim.settledClasses).toEqual(['grid']);
 
   const away = await page.evaluate(() => {
     const panel = document.getElementById('panel').getBoundingClientRect();
@@ -411,6 +465,17 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   expect(afterRight.title).not.toBe(before.title);
   await page.locator('#today-button').click();
   await page.waitForTimeout(120);
+  expect((await swipeState()).title).toBe(before.title);
+
+  // Header prev/next buttons also trigger Shared X-Axis entrance animations
+  await page.evaluate(() => { window.__gridAnimations = []; });
+  await page.locator('#prev').click();
+  await page.waitForTimeout(260);
+  await page.locator('#next').click();
+  await page.waitForTimeout(260);
+  const buttonAnims = await page.evaluate(() => window.__gridAnimations.map((a) => a.name));
+  expect(buttonAnims).toContain('grid-slide-prev');
+  expect(buttonAnims).toContain('grid-slide-next');
   expect((await swipeState()).title).toBe(before.title);
 
   // ---- Zoom levels
