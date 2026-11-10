@@ -4,6 +4,20 @@ An offline-first Progressive Web App (PWA) for the Vietnamese lunisolar calendar
 with both solar and lunar dates, Can-Chi, 24 tiết khí (solar terms), Vietnamese holidays, and a day
 detail panel — running in any modern browser and working with no network at all.
 
+## Screenshots
+
+| Light Theme | Dark Theme | 12-Month Selector | Settings Sheet |
+| :---: | :---: | :---: | :---: |
+| <img src="tests/e2e/__screenshots__/phone.png" alt="Month calendar in light theme" width="200"> | <img src="tests/e2e/__screenshots__/phone-dark.png" alt="Month calendar in dark theme" width="200"> | <img src="tests/e2e/__screenshots__/phone-months.png" alt="12-month zoom selector" width="200"> | <img src="tests/e2e/__screenshots__/phone-settings.png" alt="Settings bottom sheet" width="200"> |
+
+| 12-Year Block | Navigation Drawer | Away from Today | Offline Mode |
+| :---: | :---: | :---: | :---: |
+| <img src="tests/e2e/__screenshots__/phone-years.png" alt="12-year block selector" width="200"> | <img src="tests/e2e/__screenshots__/phone-drawer.png" alt="Navigation drawer" width="200"> | <img src="tests/e2e/__screenshots__/phone-away.png" alt="Viewing another month with Today button" width="200"> | <img src="tests/e2e/__screenshots__/phone-offline.png" alt="Offline indicator badge" width="200"> |
+
+<p align="center">
+  <img src="tests/e2e/__screenshots__/desktop.png" alt="Desktop calendar view" width="720">
+</p>
+
 ## Architecture & Stack
 
 - **Zero Backend, 100% Static PWA:** There is no backend server, API, or runtime third-party library.
