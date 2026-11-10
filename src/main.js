@@ -544,9 +544,45 @@ function updateSettingsUi() {
 const PANELS = [
   { id: 'menu', opener: 'menu-button', slides: true },
   { id: 'sheet', opener: 'menu-settings' },
+  { id: 'install', opener: 'menu-install' },
   { id: 'about', opener: 'menu-about' },
   { id: 'datepicker', opener: 'datepicker-button' },
 ];
+
+let deferredInstallPrompt = null;
+
+function isStandaloneApp() {
+  return (window.matchMedia?.('(display-mode: standalone)').matches ?? false) || navigator.standalone === true;
+}
+
+function updateInstallUi() {
+  const row = $('menu-install');
+  const promptBtn = $('install-prompt');
+  if (row) row.hidden = isStandaloneApp();
+  if (promptBtn) promptBtn.hidden = !deferredInstallPrompt || isStandaloneApp();
+}
+
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  updateInstallUi();
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  updateInstallUi();
+});
+
+async function triggerInstallPrompt() {
+  const promptEvent = deferredInstallPrompt;
+  if (!promptEvent) return;
+  deferredInstallPrompt = null;
+  updateInstallUi();
+  try {
+    await promptEvent.prompt();
+    await promptEvent.userChoice;
+  } catch {}
+}
 
 let pickerInitialized = false;
 
@@ -711,14 +747,16 @@ document.addEventListener('click', (event) => {
   }
   else if (event.target.closest('#menu-button')) openPanel('menu');
   else if (event.target.closest('#menu-settings')) openPanel('sheet');
+  else if (event.target.closest('#menu-install')) openPanel('install');
   else if (event.target.closest('#menu-about')) openPanel('about');
+  else if (event.target.closest('#install-prompt')) triggerInstallPrompt();
   else if (event.target.closest('#datepicker-button')) {
     const isOpen = !$('datepicker').hidden;
     openPanel(isOpen ? null : 'datepicker');
   }
   else if (event.target.closest('#datepicker-submit')) applyDatePicker();
   else if (event.target.closest('#datepicker-cancel')) openPanel(null);
-  else if (event.target.closest('#menu-close') || event.target.closest('#about-close')) openPanel(null);
+  else if (event.target.closest('#menu-close') || event.target.closest('#about-close') || event.target.closest('#install-close')) openPanel(null);
   else if (event.target.closest('#sheet-close') || event.target.closest('#sheet-backdrop')) openPanel(null);
   else if (event.target.closest('#title')) cycleZoom();
 });
@@ -909,7 +947,7 @@ function setOfflineBadge() {
   const badge = $('offline-badge');
   // The label is set whenever the badge is considered at all. Shown without it, all that is left is the
   // pill's own background and radius: an unlabelled dark bar floating over the calendar.
-  badge.textContent = 'Đang ngoại tuyến — lịch vẫn chạy';
+  badge.textContent = 'Đang offline (không cần Internet) — lịch vẫn chạy';
   if (navigator.onLine) {
     badge.hidden = true;
   } else {
@@ -942,8 +980,9 @@ view = { year: clampYear(Number(today.slice(0, 4))), month: Number(today.slice(5
 if (!settings.selectedIso) settings.selectedIso = today;
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => { setOfflineBadge(); render(); });
+  document.addEventListener('DOMContentLoaded', () => { updateInstallUi(); setOfflineBadge(); render(); });
 } else {
+  updateInstallUi();
   setOfflineBadge();
   render();
 }

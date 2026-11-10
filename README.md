@@ -18,6 +18,15 @@ detail panel — running in any modern browser and working with no network at al
   <img src="tests/e2e/__screenshots__/desktop.png" alt="Desktop calendar view" width="720">
 </p>
 
+## Installing as an App (Offline PWA)
+
+Lịch Ông Trăng can be installed directly onto your home screen or desktop so it launches in its own
+window and works 100% offline without a network connection (also accessible in-app via **☰ → Cài ứng dụng**):
+
+- **iPhone / iPad (Safari):** Open the site in Safari, tap the **Share** button, and select **Add to Home Screen** (*Thêm vào Màn hình chính*).
+- **Android (Chrome):** Tap the **⋮** menu in the top-right corner and select **Install app** or **Add to Home screen** (*Cài đặt ứng dụng* / *Thêm vào Màn hình chính*).
+- **Desktop (Chrome / Edge / Safari):** Click the **Install** icon in the address bar (or choose **File → Add to Dock** in Safari on macOS).
+
 ## Architecture & Stack
 
 - **Zero Backend, 100% Static PWA:** There is no backend server, API, or runtime third-party library.

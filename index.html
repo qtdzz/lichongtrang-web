@@ -153,11 +153,38 @@
     <span class="menu-row-label">Cài đặt</span>
     <span class="menu-row-help">Tuần bắt đầu, múi giờ tính ngày</span>
   </button>
+  <button class="menu-row" id="menu-install" aria-haspopup="dialog" aria-expanded="false">
+    <span class="menu-row-label">Cài ứng dụng</span>
+    <span class="menu-row-help">Thêm vào màn hình chính, dùng offline (không cần Internet)</span>
+  </button>
   <button class="menu-row" id="menu-about" aria-haspopup="dialog" aria-expanded="false">
     <span class="menu-row-label">Giới thiệu</span>
     <span class="menu-row-help">Phương pháp tính lịch và nguồn tham khảo</span>
   </button>
 </div>
+
+<section class="sheet" id="install" role="dialog" aria-modal="true" aria-labelledby="install-title" hidden>
+  <h2 id="install-title">Cài ứng dụng</h2>
+
+  <p class="about-lede">Thêm Lịch Ông Trăng vào màn hình chính để mở nhanh như ứng dụng riêng và dùng hoàn toàn offline (không cần Internet).</p>
+
+  <button class="sheet-close install-prompt" id="install-prompt" type="button" hidden>Cài đặt ngay</button>
+
+  <h3 class="about-heading">Hướng dẫn theo thiết bị</h3>
+  <ul class="about-list">
+    <li>
+      <strong>iPhone / iPad (Safari):</strong> Nhấn nút <strong>Chia sẻ</strong> (Share) trên thanh công cụ, sau đó chọn <strong>Thêm vào Màn hình chính</strong> (Add to Home Screen).
+    </li>
+    <li>
+      <strong>Android (Chrome):</strong> Nhấn menu <strong>⋮</strong> ở góc trên bên phải, sau đó chọn <strong>Cài đặt ứng dụng</strong> hoặc <strong>Thêm vào Màn hình chính</strong>.
+    </li>
+    <li>
+      <strong>Máy tính (Chrome / Edge / Safari):</strong> Nhấn biểu tượng <strong>Cài đặt</strong> trên thanh địa chỉ (hoặc chọn <strong>Tệp → Thêm vào Dock</strong> trên Safari macOS).
+    </li>
+  </ul>
+
+  <button class="sheet-close" id="install-close" type="button">Xong</button>
+</section>
 
 <!--
   About: concise credits for the published calendar algorithm and astronomical references, the licence,
@@ -166,7 +193,7 @@
 <section class="sheet" id="about" role="dialog" aria-modal="true" aria-labelledby="about-title" hidden>
   <h2 id="about-title">Giới thiệu</h2>
 
-  <p class="about-lede">Lịch âm dương Việt Nam, chạy hoàn toàn ngoại tuyến trên trình duyệt.</p>
+  <p class="about-lede">Lịch âm dương Việt Nam, chạy hoàn toàn offline (không cần Internet) trên trình duyệt.</p>
 
   <h3 class="about-heading">Thuật toán &amp; tài liệu tham khảo</h3>
   <ul class="about-list">

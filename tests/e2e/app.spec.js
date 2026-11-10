@@ -698,6 +698,41 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
 
   await page.locator('#sheet-close').click();
   await page.waitForTimeout(150);
+
+  // Install guide dialog (#menu-install -> #install) + beforeinstallprompt & standalone handling
+  await page.locator('#menu-button').click({ timeout: 4000 });
+  const installMenuRow = page.locator('#menu-install');
+  await expect(installMenuRow).toBeVisible();
+  expect((await installMenuRow.boundingBox()).height).toBeGreaterThanOrEqual(48);
+  await installMenuRow.click();
+  await page.waitForSelector('#install:not([hidden])', { timeout: 4000 });
+  expect(await installMenuRow.getAttribute('aria-expanded')).toBe('true');
+  expect(await page.locator('#install-prompt').evaluate((el) => el.hidden)).toBe(true);
+  const installText = await page.locator('#install').innerText();
+  expect(installText).toContain('iPhone / iPad (Safari)');
+  expect(installText).toContain('Thêm vào Màn hình chính');
+  expect(installText).toContain('Android (Chrome)');
+  expect(installText).toContain('Máy tính (Chrome / Edge / Safari)');
+
+  // Synthetic beforeinstallprompt reveals #install-prompt and calls prompt() on click
+  await page.evaluate(() => {
+    window.__promptCalled = 0;
+    const ev = new Event('beforeinstallprompt', { cancelable: true });
+    ev.prompt = async () => { window.__promptCalled += 1; };
+    ev.userChoice = Promise.resolve({ outcome: 'accepted' });
+    window.dispatchEvent(ev);
+  });
+  await expect(page.locator('#install-prompt')).toBeVisible();
+  expect((await page.locator('#install-prompt').boundingBox()).height).toBeGreaterThanOrEqual(48);
+  await page.locator('#install-prompt').click();
+  expect(await page.evaluate(() => window.__promptCalled)).toBe(1);
+  expect(await page.locator('#install-prompt').evaluate((el) => el.hidden)).toBe(true);
+
+  await page.locator('#install-close').click();
+  expect(await page.locator('#install').evaluate((el) => el.hidden)).toBe(true);
+  expect(await installMenuRow.getAttribute('aria-expanded')).toBe('false');
+  await page.waitForTimeout(150);
+
   await page.locator('#menu-button').click({ timeout: 4000 });
   await page.locator('#menu-about').click();
   await page.waitForFunction(
