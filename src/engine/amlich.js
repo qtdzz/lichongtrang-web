@@ -1,14 +1,20 @@
-/*
- * Vietnamese lunisolar calendar engine (Âm lịch Việt Nam).
+/*!
+ * @license
+ * Vietnamese lunisolar calendar engine (amlich.js).
  *
- * Implements Hồ Ngọc Đức's published algorithm ("How to compute the Vietnamese lunar calendar"),
- * based on Jean Meeus's Astronomical Algorithms (New Moon, solar true longitude, ΔT), Reingold &
- * Dershowitz's Julian day conversions, and the Vietnamese calendar rules (UTC+7 / 105°E default
- * meridian, winter solstice in month 11, first month without a major solar term in a 13-month
- * winter-to-winter span is a leap month).
+ * Core lunar calendar conversion adapted from amlich-hnd.js:
+ * Copyright (c) 2006 Ho Ngoc Duc. All Rights Reserved.
+ * Astronomical algorithms from the book "Astronomical Algorithms" by Jean Meeus, 1998
  *
- * Pure standard ES module with zero dependencies, compatible with Chromium, Firefox, Safari/WebKit,
- * and Node.js.
+ * Permission to use, copy, modify, and redistribute this software and its
+ * documentation for personal, non-commercial use is hereby granted provided that
+ * this copyright notice and appropriate documentation appears in all copies.
+ *
+ * View-model builders and ES module adaptations:
+ * Copyright (C) 2026 Tien Nguyen
+ * SPDX-License-Identifier: AGPL-3.0-only AND LicenseRef-HoNgocDuc-NonCommercial
+ * Licensed under GNU AGPL-3.0-only with the Section 7 amlich linking exception;
+ * see /LICENSE and /NOTICE for full terms.
  */
 
 export const LIMITS = Object.freeze({ minYear: 1900, maxYear: 2100 });
@@ -190,9 +196,11 @@ function getLeapMonthOffset(a11, timeZone) {
 export function convertSolar2Lunar(day, month, year, timeZone = DEFAULT_TIMEZONE) {
   const dayNumber = jdFromDate(day, month, year);
   const k = Math.floor((dayNumber - EPOCH_1900_JAN_0) / SYNODIC_MONTH);
-  let monthStart = getNewMoonDay(k + 1, timeZone);
-  if (monthStart > dayNumber) {
-    monthStart = getNewMoonDay(k, timeZone);
+  let nmIndex = k + 1;
+  let monthStart = getNewMoonDay(nmIndex, timeZone);
+  while (monthStart > dayNumber) {
+    nmIndex -= 1;
+    monthStart = getNewMoonDay(nmIndex, timeZone);
   }
   let a11 = getLunarMonth11(year, timeZone);
   let b11 = a11;
@@ -252,11 +260,13 @@ function solarTermOf(day, month, year, timeZone) {
   return cur !== nxt ? SOLAR_TERMS[nxt] : '';
 }
 
-function holidayOf(lunarDay, lunarMonth) {
+function holidayOf(lunarDay, lunarMonth, lunarLeap = false) {
+  if (lunarLeap) return '';
   return HOLIDAYS.get(`${lunarDay}/${lunarMonth}`) ?? '';
 }
 
-function holidayShortOf(lunarDay, lunarMonth) {
+function holidayShortOf(lunarDay, lunarMonth, lunarLeap = false) {
+  if (lunarLeap) return '';
   return HOLIDAYS_SHORT.get(`${lunarDay}/${lunarMonth}`) ?? '';
 }
 
@@ -335,8 +345,8 @@ function lunarInfoFor(day, month, year, timeZone) {
     canChiDay: canChiDayOf(day, month, year),
     zodiac: zodiacOf(lunar.year),
     solarTerm: solarTermOf(day, month, year, timeZone),
-    holiday: holidayOf(lunar.day, lunar.month),
-    holidayShort: holidayShortOf(lunar.day, lunar.month),
+    holiday: holidayOf(lunar.day, lunar.month, lunar.leap),
+    holidayShort: holidayShortOf(lunar.day, lunar.month, lunar.leap),
     weekdayIndex: weekdayOf(day, month, year),
   };
 }
@@ -346,7 +356,7 @@ function nextHolidayFrom(solar, timeZone) {
   for (let offset = 1; offset <= 400; offset += 1) {
     const date = jdToDate(startJd + offset);
     const lunar = convertSolar2Lunar(date.day, date.month, date.year, timeZone);
-    const holiday = holidayOf(lunar.day, lunar.month);
+    const holiday = holidayOf(lunar.day, lunar.month, lunar.leap);
     if (holiday.length > 0) {
       return { name: holiday, daysUntil: offset, iso: isoOf(date) };
     }

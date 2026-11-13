@@ -2,7 +2,19 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
-import { LIMITS, limits, today, monthTitle, weekdays, monthGrid, day, WebApi } from '../../src/engine/amlich.js';
+import {
+  LIMITS,
+  jdFromDate,
+  jdToDate,
+  convertSolar2Lunar,
+  limits,
+  today,
+  monthTitle,
+  weekdays,
+  monthGrid,
+  day,
+  WebApi,
+} from '../../src/engine/amlich.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dump = JSON.parse(await readFile(join(__dirname, 'fixtures/engine-dump.json'), 'utf8'));
@@ -39,6 +51,53 @@ describe('amlich unit tests', () => {
     expect(day('2026-02-31', 7.0, 'vi')).toEqual({ error: 'bad-date' });
     expect(day('2025-02-29', 7.0, 'vi')).toEqual({ error: 'bad-date' });
     expect(day('2026-04-31', 7.0, 'vi')).toEqual({ error: 'bad-date' });
+  });
+
+  it('never produces lunar day 0 across 1900-2100 at UTC+7 and UTC+14 conjunction boundaries', () => {
+    expect(convertSolar2Lunar(7, 5, 2054, 7.0)).toEqual({ day: 30, month: 3, year: 2054, leap: false });
+    expect(convertSolar2Lunar(9, 4, 2062, 7.0)).toEqual({ day: 30, month: 2, year: 2062, leap: false });
+    expect(convertSolar2Lunar(20, 1, 1901, 14.0)).toEqual({ day: 30, month: 11, year: 1900, leap: false });
+
+    for (const tz of [7.0, 14.0]) {
+      const startJd = jdFromDate(1, 1, 1900);
+      const endJd = jdFromDate(31, 12, 2100);
+      let prev = null;
+      for (let jd = startJd; jd <= endJd; jd += 1) {
+        const s = jdToDate(jd);
+        const l = convertSolar2Lunar(s.day, s.month, s.year, tz);
+        expect(l.day).toBeGreaterThanOrEqual(1);
+        expect(l.day).toBeLessThanOrEqual(30);
+        if (prev && l.day !== 1) {
+          expect(l.day).toBe(prev.day + 1);
+        }
+        prev = l;
+      }
+    }
+  });
+
+  it('does not repeat lunar holidays in leap lunar months or nextHoliday countdowns', () => {
+    const regularDoanNgo = day('2028-05-28', 7.0, 'vi');
+    expect(regularDoanNgo.lunarLeap).toBe(false);
+    expect(regularDoanNgo.holiday).toBe('Tết Đoan Ngọ');
+
+    const leapDoanNgo = day('2028-06-27', 7.0, 'vi');
+    expect(leapDoanNgo.lunarLeap).toBe(true);
+    expect(leapDoanNgo.lunarMonth).toBe(5);
+    expect(leapDoanNgo.lunarDay).toBe(5);
+    expect(leapDoanNgo.holiday).toBe('');
+
+    const leapGioTo = day('2031-05-01', 7.0, 'vi');
+    expect(leapGioTo.lunarLeap).toBe(true);
+    expect(leapGioTo.holiday).toBe('');
+
+    const afterDoanNgo = day('2028-05-29', 7.0, 'vi');
+    expect(afterDoanNgo.nextHoliday?.name).toBe('Lễ Vu Lan');
+
+    const june2028 = monthGrid(2028, 6, 1, Date.UTC(2028, 5, 15), 7.0);
+    const cell = june2028.cells.find((c) => c.iso === '2028-06-27');
+    expect(cell?.holiday).toBe('');
+    expect(cell?.holidayShort).toBe('');
+    expect(cell?.emphasis).not.toBe('holiday');
   });
 });
 
