@@ -763,16 +763,57 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   ]) {
     expect(aboutText).not.toContain(removedDetail);
   }
-  expect(aboutText).toMatch(/License:\s*AGPL-3\.0/);
+  expect(aboutText).toContain('Mã nguồn: github.com/qtdzz/lichongtrang-web');
+  expect(aboutText).toMatch(
+    /License:\s*AGPL-3\.0 \(ứng dụng, © 2026 Tien Nguyen\) · Phi thương mại \(thuật toán amlich, © 2006 Hồ Ngọc Đức\)/,
+  );
   expect(aboutText).toMatch(/Build/i);
   await expect(page.locator('#about a[href="https://www.informatik.uni-leipzig.de/~duc/amlich/calrules.html"]')).toBeVisible();
   await expect(page.locator('#about a[href="https://web.archive.org/web/20250123093939/http://www.informatik.uni-leipzig.de/~duc/amlich/calrules.html"]')).toBeVisible();
   await expect(page.locator('#about a[href="https://web.archive.org/web/20241204143834/http://www.informatik.uni-leipzig.de/~duc/amlich/calrules_en.html"]')).toBeVisible();
+  await expect(page.locator('#about a[href="https://web.archive.org/web/20240905135905/https://www.informatik.uni-leipzig.de/~duc/amlich/amlich-hnd.js"]')).toBeVisible();
+  await expect(page.locator('#about a[href="https://github.com/qtdzz/lichongtrang-web"]')).toBeVisible();
   await expect(page.locator('#about a[href="LICENSE"]')).toBeVisible();
+  await expect(page.locator('#about a[href="NOTICE"]')).toBeVisible();
+
+  const titleBeforeModalKeys = await page.locator('#title-gregorian').innerText();
+  const selectedBeforeModalKeys = await page.locator('.cell.is-selected').getAttribute('data-iso');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('PageDown');
+  expect(await page.locator('#title-gregorian').innerText()).toBe(titleBeforeModalKeys);
+  expect(await page.locator('.cell.is-selected').getAttribute('data-iso')).toBe(selectedBeforeModalKeys);
 
   await snap('phone-about.png', { stabilizeBuildRow: true });
+
+  await page.evaluate(() => {
+    window.__copied = null;
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async (t) => {
+          window.__copied = t;
+        },
+      },
+    });
+  });
+  await page.locator('#build-row').dispatchEvent('dblclick');
+  await page.waitForTimeout(80);
+  await page.locator('#build-row').dispatchEvent('dblclick');
+  const copiedDuringRace = await page.evaluate(() => window.__copied);
+  expect(copiedDuringRace).toMatch(/^engine /);
+  expect(copiedDuringRace).not.toContain('Đã sao chép');
+  await page.waitForTimeout(1300);
+  expect(await page.locator('#build-row').innerText()).toBe(buildRowText);
+
   await page.locator('#about-close').click();
   await page.waitForTimeout(200);
+
+  const titleBeforeModKeys = await page.locator('#title-gregorian').innerText();
+  const selectedBeforeModKeys = await page.locator('.cell.is-selected').getAttribute('data-iso');
+  await page.keyboard.press('Alt+ArrowLeft');
+  await page.keyboard.press('Control+PageDown');
+  expect(await page.locator('#title-gregorian').innerText()).toBe(titleBeforeModKeys);
+  expect(await page.locator('.cell.is-selected').getAttribute('data-iso')).toBe(selectedBeforeModKeys);
 
   await snap('phone.png');
   await page.emulateMedia({ colorScheme: 'dark' });
@@ -861,5 +902,39 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   });
   expect(badgeFabGap).toBeGreaterThanOrEqual(4);
 
+  expect(noise).toEqual([]);
+});
+
+test('sanitizes corrupt or out-of-range localStorage settings on startup', async ({ page, context }) => {
+  await context.addInitScript(() => {
+    if (!sessionStorage.getItem('__seededCorruptSettings')) {
+      sessionStorage.setItem('__seededCorruptSettings', '1');
+      localStorage.setItem(
+        'lichongtrang.web.settings.v1',
+        JSON.stringify({ weekStart: 99, zone: 'mars', selectedIso: '1800-99-99' }),
+      );
+    }
+  });
+
+  const noise = [];
+  page.on('console', (m) => {
+    if (m.type() === 'error') noise.push(`console error: ${m.text()}`);
+  });
+  page.on('pageerror', (e) => noise.push(`page error: ${e.message}`));
+
+  await page.goto('/', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.cell-lunar', { timeout: 10000 });
+
+  const bodyText = await page.evaluate(() => document.body.innerText);
+  expect(bodyText).not.toContain('NaN');
+  expect(bodyText).not.toContain('undefined');
+
+  await expect(page.locator('[data-weekstart="1"]')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('[data-zone="7"]')).toHaveAttribute('aria-checked', 'true');
+
+  await page.locator('#datepicker-button').click();
+  const pickerYear = Number(await page.locator('#picker-year').inputValue());
+  expect(pickerYear).toBeGreaterThanOrEqual(1900);
+  expect(pickerYear).toBeLessThanOrEqual(2100);
   expect(noise).toEqual([]);
 });

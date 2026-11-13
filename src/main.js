@@ -37,11 +37,23 @@ function defaultSettings() {
   return { weekStart: 1, zone: '7', selectedIso: null };
 }
 
+function isValidIso(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  if (!inRange(Number(value.slice(0, 4)))) return false;
+  return !engineDay(value, 7, 'vi').error;
+}
+
 function loadSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultSettings();
-    return { ...defaultSettings(), ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return defaultSettings();
+    return {
+      weekStart: parsed.weekStart === 0 ? 0 : 1,
+      zone: parsed.zone === 'device' ? 'device' : '7',
+      selectedIso: isValidIso(parsed.selectedIso) ? parsed.selectedIso : null,
+    };
   } catch {
     return defaultSettings();       // private mode, or corrupt: never fail to render a calendar
   }
@@ -672,6 +684,9 @@ function applyDatePicker() {
   selectDay(iso);
 }
 
+let currentBuildText = '';
+let copyResetTimer = null;
+
 function openPanel(id) {
   for (const panel of PANELS) {
     const open = panel.id === id;
@@ -683,7 +698,10 @@ function openPanel(id) {
   // Filled when the About dialog opens rather than at load: it is a fetch, and a row reading "…" for a
   // moment is worse than one that appears already answered.
   if (id === 'about') {
-    buildText().then((text) => { $('build-row').textContent = text; });
+    buildText().then((text) => {
+      currentBuildText = text;
+      if (copyResetTimer === null) $('build-row').textContent = text;
+    });
   } else if (id === 'datepicker') {
     populateDatePicker(settings.selectedIso || todayIso());
     $('picker-day').focus();
@@ -691,11 +709,16 @@ function openPanel(id) {
 }
 
 async function copyBuildRow() {
-  const text = $('build-row').textContent;
+  const text = currentBuildText || $('build-row').textContent;
+  if (!text || text === '…') return;
   try {
     await navigator.clipboard.writeText(text);
     $('build-row').textContent = 'Đã sao chép ✓';
-    setTimeout(() => { $('build-row').textContent = text; }, 1200);
+    clearTimeout(copyResetTimer);
+    copyResetTimer = setTimeout(() => {
+      copyResetTimer = null;
+      $('build-row').textContent = currentBuildText || text;
+    }, 1200);
   } catch {
     const range = document.createRange();
     range.selectNodeContents($('build-row'));
@@ -712,7 +735,9 @@ document.addEventListener('click', (event) => {
   // opens its grid. Picking is what zooms back in, exactly as it does on the phone.
   const yearCell = event.target.closest('[data-pick-year]');
   if (yearCell) {
-    selectorYear = Number(yearCell.dataset.pickYear);
+    const pickedYear = Number(yearCell.dataset.pickYear);
+    if (yearCell.disabled || !inRange(pickedYear)) return;
+    selectorYear = pickedYear;
     zoom = 'months';
     render();
     return;
@@ -798,7 +823,8 @@ document.addEventListener('keydown', (event) => {
     applyDatePicker();
     return;
   }
-  if (event.target.closest('#sheet, #datepicker')) return;
+  if (!$('sheet-backdrop').hidden || event.target.closest('#sheet, #datepicker')) return;
+  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
   // The page keys step by whatever unit is on screen, the same as the arrows do.
   if (event.key === 'PageUp') { shiftZoom(-1); event.preventDefault(); return; }
   if (event.key === 'PageDown') { shiftZoom(1); event.preventDefault(); return; }
