@@ -17,7 +17,7 @@ verify-browser:
 docker-build:
 	docker build -t $(IMAGE):$(TAG) .
 
-## Build and push the Docker image. On the homeserver afterwards:
+## Build and push the Docker image. On a self-hosted server afterwards:
 ##   docker compose pull && docker compose up -d
 docker-publish: docker-build
 	docker push $(IMAGE):$(TAG)

@@ -1,4 +1,4 @@
-# Keep the build context to the sources the build actually reads. LICENSE stays: it is served.
+# Keep the build context to the sources the build actually reads. LICENSE and NOTICE stay: they are served.
 .git
 .superpowers
 dist

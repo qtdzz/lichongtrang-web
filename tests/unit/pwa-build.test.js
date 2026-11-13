@@ -43,6 +43,9 @@ describe('offline precache audit', () => {
   it('keeps project structure and config clean and deterministic', async () => {
     expect(existsSync(join(ROOT, 'tools'))).toBe(false);
     const pkg = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8'));
+    expect(pkg.license).toBe('AGPL-3.0-only AND LicenseRef-HoNgocDuc-NonCommercial');
+    expect(pkg.repository?.url).toBe('git+https://github.com/qtdzz/lichongtrang-web.git');
+    expect(pkg.homepage).toBe('https://github.com/qtdzz/lichongtrang-web');
     expect(pkg.scripts['test:e2e']).toBe('playwright test --project=chromium');
     expect(pkg.scripts['test:e2e:all']).toBe('playwright test');
     for (const version of Object.values(pkg.devDependencies)) {
@@ -52,6 +55,39 @@ describe('offline precache audit', () => {
     expect(dockerignore).not.toContain('verify-shots');
     expect(dockerignore).toContain('test-results');
     expect(dockerignore).toContain('playwright-report');
+  });
+
+  it('ships verbatim LICENSE and NOTICE files and retains @license headers in bundled JS', async () => {
+    const [rootLicense, pubLicense, distLicense] = await Promise.all([
+      readFile(join(ROOT, 'LICENSE'), 'utf8'),
+      readFile(join(ROOT, 'public/LICENSE'), 'utf8'),
+      readFile(join(DIST, 'LICENSE'), 'utf8'),
+    ]);
+    expect(pubLicense).toBe(rootLicense);
+    expect(distLicense).toBe(rootLicense);
+    expect(rootLicense).toContain('GNU AFFERO GENERAL PUBLIC LICENSE');
+
+    const [rootNotice, pubNotice, distNotice] = await Promise.all([
+      readFile(join(ROOT, 'NOTICE'), 'utf8'),
+      readFile(join(ROOT, 'public/NOTICE'), 'utf8'),
+      readFile(join(DIST, 'NOTICE'), 'utf8'),
+    ]);
+    expect(pubNotice).toBe(rootNotice);
+    expect(distNotice).toBe(rootNotice);
+    expect(rootNotice).toContain('Copyright (C) 2026 Tien Nguyen');
+    expect(rootNotice).toContain('Section 7');
+    expect(rootNotice).toContain('Copyright (c) 2006 Ho Ngoc Duc. All Rights Reserved.');
+    expect(rootNotice).toContain('https://github.com/qtdzz/lichongtrang-web');
+
+    const allFiles = await walk(DIST);
+    const jsBundles = await Promise.all(
+      allFiles
+        .filter((f) => f.startsWith('assets/') && f.endsWith('.js'))
+        .map((f) => readFile(join(DIST, f), 'utf8')),
+    );
+    const bundledJs = jsBundles.join('\n');
+    expect(bundledJs).toContain('Copyright (c) 2006 Ho Ngoc Duc. All Rights Reserved.');
+    expect(bundledJs).toContain('Copyright (C) 2026 Tien Nguyen');
   });
 
   it('precaches every emitted asset and references no external origins', async () => {
@@ -275,6 +311,14 @@ describe('service worker offline execution', () => {
     const shell = await request('index.html', 'navigate');
     expect(shell?.ok).toBe(true);
     expect(shell.body.toString()).toContain('Lịch Ông Trăng');
+
+    const licenseNav = await request('LICENSE', 'navigate');
+    expect(licenseNav?.ok).toBe(true);
+    expect(licenseNav.body.toString()).toContain('GNU AFFERO GENERAL PUBLIC LICENSE');
+
+    const noticeNav = await request('NOTICE', 'navigate');
+    expect(noticeNav?.ok).toBe(true);
+    expect(noticeNav.body.toString()).toContain('Copyright (c) 2006 Ho Ngoc Duc');
 
     const precached = JSON.parse(code.match(/const PRECACHE = (\[[\s\S]*?\]);/)[1]);
     for (const file of precached) {

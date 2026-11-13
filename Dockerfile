@@ -1,4 +1,4 @@
-# The image the homeserver pulls.
+# The image a self-hosted server pulls.
 #
 # Two stages: Node 22 builds and verifies the static PWA with Vite and Vitest, and nginx:alpine
 # serves the resulting dist/ directory.
@@ -21,7 +21,7 @@ RUN npm run check
 FROM nginx:alpine
 
 # Nothing is configured at runtime and nothing is persisted: the site is static and the offline story
-# lives in the service worker, not on the server. dist/ includes /LICENSE for AGPL-3.0.
+# lives in the service worker, not on the server. dist/ includes /LICENSE and /NOTICE.
 COPY --from=build /src/dist /usr/share/nginx/html
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 

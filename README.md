@@ -4,6 +4,8 @@ An offline-first Progressive Web App (PWA) for the Vietnamese lunisolar calendar
 with both solar and lunar dates, Can-Chi, 24 tiết khí (solar terms), Vietnamese holidays, and a day
 detail panel — running in any modern browser and working with no network at all.
 
+**Source code:** <https://github.com/qtdzz/lichongtrang-web>
+
 ## Screenshots
 
 | Light Theme | Dark Theme | 12-Month Selector | Settings Sheet |
@@ -53,11 +55,14 @@ window and works 100% offline without a network connection (also accessible in-a
 ```text
 lichongtrang-web/
 ├── index.html                        # App shell entry point
+├── LICENSE                           # GNU AGPL-3.0 licence text
+├── NOTICE                            # Dual-license terms, Section 7 exception & 2006 amlich notice
 ├── package.json                      # Scripts & devDependencies (vite, vitest, @playwright/test)
 ├── vite.config.js                    # Vite bundler config + build-info.json & sw.js generator
 ├── playwright.config.js              # Playwright Test config (chromium, firefox, webkit)
 ├── public/                           # Static assets copied as-is to dist/
 │   ├── LICENSE                       # AGPL-3.0 licence text served at /LICENSE
+│   ├── NOTICE                        # Dual-license & attribution notice served at /NOTICE
 │   ├── manifest.webmanifest          # PWA install manifest
 │   └── icons/                        # App and Apple touch icons
 ├── src/
@@ -144,8 +149,8 @@ npm run test:e2e:update
   year's 12 months. Picking a year opens its months, picking a month opens its grid, and `Escape`
   steps back out one level at a time.
 - The `☰` button at the leading edge opens the navigation drawer with **Cài đặt** (week
-  start, time zone) and **Giới thiệu** (algorithm credits, AGPL-3.0 licence, and the interactive
-  build stamp).
+  start, time zone), **Cài ứng dụng** (PWA install guide), and **Giới thiệu** (algorithm credits,
+  source repository, dual-license terms, and the interactive build stamp).
 
 ## Deployment
 
@@ -154,7 +159,7 @@ npm run test:e2e:update
 `dist/` produced by `npm run build` is 100% static files. Upload `dist/` to any HTTPS static host
 (Cloudflare Pages, GitHub Pages, Netlify, Vercel, S3, or your own web server).
 
-### Option 2: Docker & Homeserver Deployment
+### Option 2: Docker & Self-Hosted Server Deployment
 
 The repository includes a multi-stage [`Dockerfile`](Dockerfile) and [`docker/nginx.conf`](docker/nginx.conf):
 1. **Build stage (`node:22-bookworm-slim`):** installs dependencies and runs `npm run check`
@@ -178,12 +183,35 @@ make docker-build                              # Builds lichongtrang-web:latest 
 make docker-publish IMAGE=registry/app:latest  # Builds and pushes to your registry
 ```
 
-Then on the homeserver:
+Then on your self-hosted server:
 
 ```sh
 docker compose pull && docker compose up -d
 ```
 
-## Licence
+## Credits & Licence
 
-AGPL-3.0-only — see [`LICENSE`](LICENSE).
+### Credits
+
+- **Dr. Hồ Ngọc Đức** — *Thuật toán tính âm lịch*
+  ([original](https://www.informatik.uni-leipzig.de/~duc/amlich/calrules.html);
+  archived: [Tiếng Việt](https://web.archive.org/web/20250123093939/http://www.informatik.uni-leipzig.de/~duc/amlich/calrules.html),
+  [English](https://web.archive.org/web/20241204143834/http://www.informatik.uni-leipzig.de/~duc/amlich/calrules_en.html))
+  and the JavaScript reference implementation `amlich-hnd.js`
+  ([archived](https://web.archive.org/web/20240905135905/https://www.informatik.uni-leipzig.de/~duc/amlich/amlich-hnd.js)),
+  from which the core lunar conversion in [`src/engine/amlich.js`](src/engine/amlich.js) is adapted.
+- **Jean Meeus** — *Astronomical Algorithms* (1998), whose New Moon and solar longitude series
+  underpin the astronomical calculations.
+
+### Licence (`AGPL-3.0-only AND LicenseRef-HoNgocDuc-NonCommercial`)
+
+- **Application, UI & Offline PWA Shell (`Copyright (C) 2026 Tien Nguyen`):** Licensed under the
+  **GNU Affero General Public License v3.0 only** ([`LICENSE`](LICENSE)), with a GNU AGPLv3
+  **Section 7 Additional Permission** ([`NOTICE`](NOTICE)) permitting combination with the lunar
+  calendar engine in `src/engine/amlich.js`.
+- **Vietnamese Lunar Calendar Engine ([`src/engine/amlich.js`](src/engine/amlich.js), `Copyright (c) 2006 Ho Ngoc Duc. All Rights Reserved.`):**
+  Redistributed under Dr. Hồ Ngọc Đức's original **personal, non-commercial** permission notice
+  preserved verbatim in [`src/engine/amlich.js`](src/engine/amlich.js) and [`NOTICE`](NOTICE).
+- Because the combined application as distributed in <https://github.com/qtdzz/lichongtrang-web>
+  includes `src/engine/amlich.js`, use and redistribution of the combined work are limited to
+  **personal, non-commercial** purposes unless `src/engine/amlich.js` is replaced.

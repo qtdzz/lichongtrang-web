@@ -26,8 +26,9 @@ export async function hashTree(root, { skip = [] } = {}) {
 }
 
 function licenseMimeMiddleware(req, res, next) {
-  if (req.url && /^\/+LICENSE(?:\?|$)/.test(req.url)) {
-    req.url = '/LICENSE';
+  const match = req.url && req.url.match(/^\/+(LICENSE|NOTICE)(?:\?|$)/);
+  if (match) {
+    req.url = `/${match[1]}`;
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   }
   next();
@@ -76,6 +77,9 @@ function pwaBuildPlugin() {
 export default defineConfig({
   base: './',
   publicDir: 'public',
+  esbuild: {
+    legalComments: 'inline',
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,

@@ -1,0 +1,45 @@
+Lịch Ông Trăng — Web (https://github.com/qtdzz/lichongtrang-web)
+================================================================
+
+1. Application, UI & Offline PWA Shell
+--------------------------------------
+Copyright (C) 2026 Tien Nguyen
+
+This program (excluding the third-party lunar calendar algorithm adapted in
+src/engine/amlich.js noted below) is free software: you can redistribute it
+and/or modify it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, version 3 of the License only
+(AGPL-3.0-only).
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License in LICENSE for
+more details.
+
+Additional Permission under GNU AGPL version 3 Section 7:
+If you modify or convey this Program, or any covered work, by linking or
+combining it with the Vietnamese lunar calendar engine in src/engine/amlich.js
+(derived from amlich-hnd.js by Ho Ngoc Duc), the licensors of this Program
+grant you additional permission to convey the resulting work, provided that you
+also comply with the personal, non-commercial terms of amlich-hnd.js below for
+that component and provide Corresponding Source for the AGPL-covered parts in
+accordance with section 13 of the GNU AGPL-3.0.
+
+Because the combined application as distributed includes src/engine/amlich.js,
+use and redistribution of the combined application are limited to personal,
+non-commercial purposes unless src/engine/amlich.js is replaced.
+
+
+2. Vietnamese Lunar Calendar Algorithm (src/engine/amlich.js)
+-------------------------------------------------------------
+Core lunar conversion adapted from Dr. Hồ Ngọc Đức's amlich-hnd.js
+(archived at https://web.archive.org/web/20240905135905/https://www.informatik.uni-leipzig.de/~duc/amlich/amlich-hnd.js;
+algorithm paper archived at https://web.archive.org/web/20250123093939/http://www.informatik.uni-leipzig.de/~duc/amlich/calrules.html
+and https://web.archive.org/web/20241204143834/http://www.informatik.uni-leipzig.de/~duc/amlich/calrules_en.html):
+
+  Copyright (c) 2006 Ho Ngoc Duc. All Rights Reserved.
+  Astronomical algorithms from the book "Astronomical Algorithms" by Jean Meeus, 1998
+
+  Permission to use, copy, modify, and redistribute this software and its
+  documentation for personal, non-commercial use is hereby granted provided that
+  this copyright notice and appropriate documentation appears in all copies.

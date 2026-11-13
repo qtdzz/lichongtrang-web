@@ -1,3 +1,15 @@
+/*!
+ * @license
+ * Lịch Ông Trăng — Web
+ * Copyright (C) 2026 Tien Nguyen
+ * SPDX-License-Identifier: AGPL-3.0-only
+ *
+ * Licensed under the GNU Affero General Public License v3.0 only, with a
+ * Section 7 additional permission to combine with src/engine/amlich.js
+ * (Copyright (c) 2006 Ho Ngoc Duc, personal non-commercial use).
+ * See /LICENSE and /NOTICE for full terms.
+ */
+
 /*
  * The web app.
  *
