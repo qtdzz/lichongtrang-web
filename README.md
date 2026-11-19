@@ -6,6 +6,8 @@ detail panel — running in any modern browser and working with no network at al
 
 **Source code:** <https://github.com/qtdzz/lichongtrang-web>
 
+**Licence:** **Personal, non-commercial use only** as combined — the app shell is [`AGPL-3.0-only`](LICENSE) (with a Section 7 linking exception in [`NOTICE`](NOTICE)), while the adapted `amlich` engine (`src/engine/amlich.js`, © 2006 Hồ Ngọc Đức) is personal, non-commercial only (see [Credits & Licence](#credits--licence)).
+
 ## Screenshots
 
 | Light Theme | Dark Theme | 12-Month Selector | Settings Sheet |
@@ -61,8 +63,8 @@ lichongtrang-web/
 ├── vite.config.js                    # Vite bundler config + build-info.json & sw.js generator
 ├── playwright.config.js              # Playwright Test config (chromium, firefox, webkit)
 ├── public/                           # Static assets copied as-is to dist/
-│   ├── LICENSE                       # AGPL-3.0 licence text served at /LICENSE
-│   ├── NOTICE                        # Dual-license & attribution notice served at /NOTICE
+│   ├── LICENSE.txt                   # AGPL-3.0 licence text served at LICENSE.txt
+│   ├── NOTICE.txt                    # Dual-license & attribution notice served at NOTICE.txt
 │   ├── manifest.webmanifest          # PWA install manifest
 │   └── icons/                        # App and Apple touch icons
 ├── src/
@@ -157,7 +159,10 @@ npm run test:e2e:update
 ### Option 1: Static Hosting
 
 `dist/` produced by `npm run build` is 100% static files. Upload `dist/` to any HTTPS static host
-(Cloudflare Pages, GitHub Pages, Netlify, Vercel, S3, or your own web server).
+(Cloudflare Pages, GitHub Pages, Netlify, Vercel, S3, or your own web server). For automated
+GitHub Pages deployment, [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)
+builds, checks, and deploys `dist/` on pushes to `main` (enable **Settings → Pages → Build and
+deployment → Source: GitHub Actions**).
 
 ### Option 2: Docker & Self-Hosted Server Deployment
 

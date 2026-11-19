@@ -26,9 +26,8 @@
 <body>
 
 <!--
-  The month screen, mirroring the Android one: the same header, the same grid, the same day panel.
-  Every value shown here comes from the Kotlin engine compiled to JavaScript, so this page has no
-  calendar logic of its own - it draws what the engine says, exactly as the Compose surface does.
+  The month screen: header, calendar grid, and day detail panel.
+  Every calendar value comes from src/engine/amlich.js; this page has no calendar logic of its own.
 -->
 
 <header class="top">
@@ -62,8 +61,8 @@
   </div>
 
   <!--
-    The zoomed-out levels: twelve years in a block, then one year's twelve months, drawn by app.js into
-    the same four-by-three grid the phone uses. The title zooms out and a cell zooms back in.
+    The zoomed-out levels: twelve years in a block, then one year's twelve months, drawn by src/main.js
+    into a four-by-three grid. The title zooms out and a cell zooms back in.
   -->
   <div class="selector" id="selector" role="grid" aria-label="Chọn năm" hidden></div>
 
@@ -207,7 +206,7 @@
   </ul>
 
   <p class="about-note">Mã nguồn: <a class="about-link" href="https://github.com/qtdzz/lichongtrang-web" target="_blank" rel="noopener noreferrer">github.com/qtdzz/lichongtrang-web</a></p>
-  <p class="about-note">License: <a class="about-link" href="LICENSE" target="_blank" rel="noopener noreferrer">AGPL-3.0</a> (ứng dụng, © 2026 Tien Nguyen) · <a class="about-link" href="NOTICE" target="_blank" rel="noopener noreferrer">Phi thương mại</a> (thuật toán <code>amlich</code>, © 2006 Hồ Ngọc Đức)</p>
+  <p class="about-note">License: <a class="about-link" href="LICENSE.txt" target="_blank" rel="noopener noreferrer">AGPL-3.0</a> (ứng dụng, © 2026 Tien Nguyen) · <a class="about-link" href="NOTICE.txt" target="_blank" rel="noopener noreferrer">Phi thương mại</a> (thuật toán <code>amlich</code>, © 2006 Hồ Ngọc Đức)</p>
 
   <p class="sheet-label about-build">Build</p>
   <button class="build-row" id="build-row" title="Nhấn hai lần để sao chép">…</button>

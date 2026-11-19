@@ -21,7 +21,7 @@ RUN npm run check
 FROM nginx:alpine
 
 # Nothing is configured at runtime and nothing is persisted: the site is static and the offline story
-# lives in the service worker, not on the server. dist/ includes /LICENSE and /NOTICE.
+# lives in the service worker, not on the server. dist/ includes /LICENSE.txt and /NOTICE.txt.
 COPY --from=build /src/dist /usr/share/nginx/html
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 

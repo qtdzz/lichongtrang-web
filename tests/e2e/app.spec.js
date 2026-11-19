@@ -773,8 +773,8 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   await expect(page.locator('#about a[href="https://web.archive.org/web/20241204143834/http://www.informatik.uni-leipzig.de/~duc/amlich/calrules_en.html"]')).toBeVisible();
   await expect(page.locator('#about a[href="https://web.archive.org/web/20240905135905/https://www.informatik.uni-leipzig.de/~duc/amlich/amlich-hnd.js"]')).toBeVisible();
   await expect(page.locator('#about a[href="https://github.com/qtdzz/lichongtrang-web"]')).toBeVisible();
-  await expect(page.locator('#about a[href="LICENSE"]')).toBeVisible();
-  await expect(page.locator('#about a[href="NOTICE"]')).toBeVisible();
+  await expect(page.locator('#about a[href="LICENSE.txt"]')).toBeVisible();
+  await expect(page.locator('#about a[href="NOTICE.txt"]')).toBeVisible();
 
   const titleBeforeModalKeys = await page.locator('#title-gregorian').innerText();
   const selectedBeforeModalKeys = await page.locator('.cell.is-selected').getAttribute('data-iso');

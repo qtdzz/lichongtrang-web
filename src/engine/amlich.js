@@ -14,7 +14,7 @@
  * Copyright (C) 2026 Tien Nguyen
  * SPDX-License-Identifier: AGPL-3.0-only AND LicenseRef-HoNgocDuc-NonCommercial
  * Licensed under GNU AGPL-3.0-only with the Section 7 amlich linking exception;
- * see /LICENSE and /NOTICE for full terms.
+ * see LICENSE.txt and NOTICE.txt for full terms.
  */
 
 export const LIMITS = Object.freeze({ minYear: 1900, maxYear: 2100 });

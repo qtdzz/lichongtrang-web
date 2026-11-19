@@ -60,8 +60,8 @@ describe('offline precache audit', () => {
   it('ships verbatim LICENSE and NOTICE files and retains @license headers in bundled JS', async () => {
     const [rootLicense, pubLicense, distLicense] = await Promise.all([
       readFile(join(ROOT, 'LICENSE'), 'utf8'),
-      readFile(join(ROOT, 'public/LICENSE'), 'utf8'),
-      readFile(join(DIST, 'LICENSE'), 'utf8'),
+      readFile(join(ROOT, 'public/LICENSE.txt'), 'utf8'),
+      readFile(join(DIST, 'LICENSE.txt'), 'utf8'),
     ]);
     expect(pubLicense).toBe(rootLicense);
     expect(distLicense).toBe(rootLicense);
@@ -69,8 +69,8 @@ describe('offline precache audit', () => {
 
     const [rootNotice, pubNotice, distNotice] = await Promise.all([
       readFile(join(ROOT, 'NOTICE'), 'utf8'),
-      readFile(join(ROOT, 'public/NOTICE'), 'utf8'),
-      readFile(join(DIST, 'NOTICE'), 'utf8'),
+      readFile(join(ROOT, 'public/NOTICE.txt'), 'utf8'),
+      readFile(join(DIST, 'NOTICE.txt'), 'utf8'),
     ]);
     expect(pubNotice).toBe(rootNotice);
     expect(distNotice).toBe(rootNotice);
@@ -88,6 +88,7 @@ describe('offline precache audit', () => {
     const bundledJs = jsBundles.join('\n');
     expect(bundledJs).toContain('Copyright (c) 2006 Ho Ngoc Duc. All Rights Reserved.');
     expect(bundledJs).toContain('Copyright (C) 2026 Tien Nguyen');
+    expect(bundledJs).not.toContain('modulepreload');
   });
 
   it('precaches every emitted asset and references no external origins', async () => {
@@ -312,11 +313,11 @@ describe('service worker offline execution', () => {
     expect(shell?.ok).toBe(true);
     expect(shell.body.toString()).toContain('Lịch Ông Trăng');
 
-    const licenseNav = await request('LICENSE', 'navigate');
+    const licenseNav = await request('LICENSE.txt', 'navigate');
     expect(licenseNav?.ok).toBe(true);
     expect(licenseNav.body.toString()).toContain('GNU AFFERO GENERAL PUBLIC LICENSE');
 
-    const noticeNav = await request('NOTICE', 'navigate');
+    const noticeNav = await request('NOTICE.txt', 'navigate');
     expect(noticeNav?.ok).toBe(true);
     expect(noticeNav.body.toString()).toContain('Copyright (c) 2006 Ho Ngoc Duc');
 
