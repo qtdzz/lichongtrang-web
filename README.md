@@ -159,10 +159,10 @@ npm run test:e2e:update
 ### Option 1: Static Hosting
 
 `dist/` produced by `npm run build` is 100% static files. Upload `dist/` to any HTTPS static host
-(Cloudflare Pages, GitHub Pages, Netlify, Vercel, S3, or your own web server). For automated
-GitHub Pages deployment, [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)
-builds, checks, and deploys `dist/` on pushes to `main` (enable **Settings → Pages → Build and
-deployment → Source: GitHub Actions**).
+(Cloudflare Pages, GitHub Pages, Netlify, Vercel, S3, or your own web server). For GitHub
+Actions CI and automated GitHub Pages deployment:
+- [`.github/workflows/build.yml`](.github/workflows/build.yml) runs `npm run check` (`vite build && vitest run`) on pushes and pull requests to `main`.
+- [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) builds, checks, and deploys `dist/` to GitHub Pages when a GitHub Release is published (or via manual dispatch). Enable **Settings → Pages → Build and deployment → Source: GitHub Actions**, and under **Settings → Environments → `github-pages` → Deployment branches and tags**, add a **Tag** rule matching your release tags (e.g., `v*`) or choose **No restriction**.
 
 ### Option 2: Docker & Self-Hosted Server Deployment
 
