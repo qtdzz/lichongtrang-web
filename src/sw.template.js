@@ -13,10 +13,29 @@
 const VERSION = '__VERSION__';
 const PRECACHE = __PRECACHE__;
 
+async function cleanResponse(response) {
+  if (!response.redirected) return response;
+  const body = await response.arrayBuffer();
+  const headers = new Headers(response.headers);
+  headers.delete('content-encoding');
+  headers.delete('content-length');
+  return new Response(body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(VERSION)
-      .then((cache) => cache.addAll(PRECACHE))
+      .then((cache) => Promise.all(
+        PRECACHE.map(async (url) => {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`Precache failed for ${url}: ${response.status}`);
+          await cache.put(url, await cleanResponse(response));
+        })
+      ))
       .then(() => self.skipWaiting())
   );
 });
@@ -56,7 +75,7 @@ self.addEventListener('fetch', (event) => {
       if (hit) return hit;
       return fetch(request)
         .then((response) => {
-          if (response.ok && response.type === 'basic') {
+          if (response.ok && response.type === 'basic' && !response.redirected) {
             const copy = response.clone();
             caches.open(VERSION).then((cache) => cache.put(request, copy));
           }

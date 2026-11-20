@@ -54,7 +54,7 @@ function pwaBuildPlugin() {
       const engineBytes = await readFile(enginePath);
       const engineHash = createHash('sha256').update(engineBytes).digest('hex');
 
-      const web = await hashTree(outDir, { skip: ['build-info.json', 'sw.js'] });
+      const web = await hashTree(outDir, { skip: ['build-info.json', 'sw.js', '_headers'] });
       const info = {
         engineHash,
         engineFiles: ['amlich.js'],
@@ -63,7 +63,7 @@ function pwaBuildPlugin() {
       };
       await writeFile(join(outDir, 'build-info.json'), JSON.stringify(info, null, 2) + '\n');
 
-      const all = await hashTree(outDir, { skip: ['sw.js'] });
+      const all = await hashTree(outDir, { skip: ['sw.js', '_headers'] });
       const version = `lot-web-${all.hash.slice(0, 12)}`;
       const template = await readFile(resolve(rootDir, 'src/sw.template.js'), 'utf8');
       const sw = template

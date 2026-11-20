@@ -104,6 +104,12 @@ describe('offline precache audit', () => {
       expect(allFiles).toContain(file);
     }
 
+    expect(allFiles).toContain('_headers');
+    expect(precachedSet.has('_headers')).toBe(false);
+    const headersText = await readFile(join(DIST, '_headers'), 'utf8');
+    expect(headersText).toContain('/sw.js');
+    expect(headersText).toContain('/assets/*');
+
     const html = await readFile(join(DIST, 'index.html'), 'utf8');
     const referenced = new Set();
 
@@ -201,14 +207,26 @@ describe('service worker offline execution', () => {
     }
 
     class ResponseStub {
-      constructor(body, status = 200) {
+      constructor(body, init = 200) {
+        const opts = typeof init === 'number' ? { status: init } : init;
         this.body = body;
-        this.status = status;
-        this.ok = status >= 200 && status < 300;
+        this.status = opts.status ?? 200;
+        this.statusText = opts.statusText ?? '';
+        this.headers = new Headers(opts.headers);
+        this.redirected = Boolean(opts.redirected);
+        this.ok = this.status >= 200 && this.status < 300;
         this.type = 'basic';
       }
+      async arrayBuffer() {
+        return this.body;
+      }
       clone() {
-        return new ResponseStub(this.body, this.status);
+        return new ResponseStub(this.body, {
+          status: this.status,
+          statusText: this.statusText,
+          headers: this.headers,
+          redirected: this.redirected,
+        });
       }
     }
 
@@ -244,6 +262,8 @@ describe('service worker offline execution', () => {
       Object,
       Array,
       Error,
+      Headers,
+      Response: ResponseStub,
       location: { origin: ORIGIN },
       self: {
         location: { origin: ORIGIN },
@@ -270,10 +290,17 @@ describe('service worker offline execution', () => {
       async fetch(request) {
         networkRequests += 1;
         if (!online) throw new TypeError('Failed to fetch (offline)');
-        const path = new URL(typeof request === 'string' ? request : request.url).pathname.replace(/^\//, '');
+        const path = new URL(typeof request === 'string' ? request : request.url, `${ORIGIN}/`).pathname.replace(/^\//, '');
         try {
           const bytes = await readFile(join(DIST, path));
-          return new ResponseStub(bytes, 200);
+          // Simulate Cloudflare Workers Static Assets redirecting /index.html -> / with Brotli headers
+          return new ResponseStub(bytes, {
+            status: 200,
+            redirected: path === 'index.html',
+            headers: path === 'index.html'
+              ? { 'content-type': 'text/html; charset=utf-8', 'content-encoding': 'br', 'content-length': '123' }
+              : undefined,
+          });
         } catch {
           return new ResponseStub('not found', 404);
         }
@@ -309,8 +336,20 @@ describe('service worker offline execution', () => {
       return responded;
     }
 
+    const rootShell = await request('/', 'navigate');
+    expect(rootShell?.ok).toBe(true);
+    expect(rootShell?.redirected).toBe(false);
+    expect(rootShell.headers.get('content-encoding')).toBeNull();
+    expect(rootShell.headers.get('content-length')).toBeNull();
+    expect(rootShell.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(rootShell.body.toString()).toContain('Lịch Ông Trăng');
+
     const shell = await request('index.html', 'navigate');
     expect(shell?.ok).toBe(true);
+    expect(shell?.redirected).toBe(false);
+    expect(shell.headers.get('content-encoding')).toBeNull();
+    expect(shell.headers.get('content-length')).toBeNull();
+    expect(shell.headers.get('content-type')).toBe('text/html; charset=utf-8');
     expect(shell.body.toString()).toContain('Lịch Ông Trăng');
 
     const licenseNav = await request('LICENSE.txt', 'navigate');

@@ -4,7 +4,7 @@
   "description": "Trang này chỉ để xem âm lịch Việt Nam",
   "lang": "vi",
   "dir": "ltr",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",

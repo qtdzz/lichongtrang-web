@@ -61,8 +61,10 @@ lichongtrang-web/
 ├── NOTICE                            # Dual-license terms, Section 7 exception & 2006 amlich notice
 ├── package.json                      # Scripts & devDependencies (vite, vitest, @playwright/test)
 ├── vite.config.js                    # Vite bundler config + build-info.json & sw.js generator
+├── wrangler.jsonc                    # Cloudflare Workers Static Assets deployment config
 ├── playwright.config.js              # Playwright Test config (chromium, firefox, webkit)
 ├── public/                           # Static assets copied as-is to dist/
+│   ├── _headers                      # Cache-Control & security headers for Cloudflare static assets
 │   ├── LICENSE.txt                   # AGPL-3.0 licence text served at LICENSE.txt
 │   ├── NOTICE.txt                    # Dual-license & attribution notice served at NOTICE.txt
 │   ├── manifest.webmanifest          # PWA install manifest
@@ -159,10 +161,10 @@ npm run test:e2e:update
 ### Option 1: Static Hosting
 
 `dist/` produced by `npm run build` is 100% static files. Upload `dist/` to any HTTPS static host
-(Cloudflare Pages, GitHub Pages, Netlify, Vercel, S3, or your own web server). For GitHub
-Actions CI and automated GitHub Pages deployment:
+(Cloudflare Workers Static Assets, Cloudflare Pages, GitHub Pages, Netlify, Vercel, S3, or your own
+web server). For GitHub Actions CI and automated Cloudflare Workers Static Assets deployment:
 - [`.github/workflows/build.yml`](.github/workflows/build.yml) runs `npm run check` (`vite build && vitest run`) on pushes and pull requests to `main`.
-- [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) builds, checks, and deploys `dist/` to GitHub Pages when a GitHub Release is published (or via manual dispatch). Enable **Settings → Pages → Build and deployment → Source: GitHub Actions**, and under **Settings → Environments → `github-pages` → Deployment branches and tags**, add a **Tag** rule matching your release tags (e.g., `v*`) or choose **No restriction**.
+- [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) builds, checks, and deploys `dist/` to Cloudflare Workers Static Assets (`wrangler.jsonc`) when a GitHub Release is published (or via manual dispatch). Add repository secrets `CLOUDFLARE_API_TOKEN` (with **Edit Cloudflare Workers** permissions) and `CLOUDFLARE_ACCOUNT_ID` under **Settings → Secrets and variables → Actions**.
 
 ### Option 2: Docker & Self-Hosted Server Deployment
 
