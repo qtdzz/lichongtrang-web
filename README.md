@@ -207,6 +207,7 @@ docker compose pull && docker compose up -d
   from which the core lunar conversion in [`src/engine/amlich.js`](src/engine/amlich.js) is adapted.
 - **Jean Meeus** — *Astronomical Algorithms* (1998), whose New Moon and solar longitude series
   underpin the astronomical calculations.
+- **Powered by Google Antigravity** — Built, tested, and reviewed with AI assistance.
 
 ### Licence (`AGPL-3.0-only AND LicenseRef-HoNgocDuc-NonCommercial`)
 
