@@ -4,6 +4,7 @@ An offline-first Progressive Web App (PWA) for the Vietnamese lunisolar calendar
 with both solar and lunar dates, Can-Chi, 24 tiết khí (solar terms), Vietnamese holidays, and a day
 detail panel — running in any modern browser and working with no network at all.
 
+**Live site:** <https://lichongtrang.com>  
 **Source code:** <https://github.com/qtdzz/lichongtrang-web>
 
 **Licence:** **Personal, non-commercial use only** as combined — the app shell is [`AGPL-3.0-only`](LICENSE) (with a Section 7 linking exception in [`NOTICE`](NOTICE)), while the adapted `amlich` engine (`src/engine/amlich.js`, © 2006 Hồ Ngọc Đức) is personal, non-commercial only (see [Credits & Licence](#credits--licence)).

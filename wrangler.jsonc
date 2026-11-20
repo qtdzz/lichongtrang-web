@@ -1,8 +1,14 @@
 {
   "name": "lichongtrang-web",
   "compatibility_date": "2026-11-20",
-  "workers_dev": true,
+  "workers_dev": false,
   "preview_urls": false,
+  "routes": [
+    {
+      "pattern": "lichongtrang.com",
+      "custom_domain": true
+    }
+  ],
   "assets": {
     "directory": "./dist",
     "html_handling": "auto-trailing-slash",
