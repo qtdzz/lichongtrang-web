@@ -561,9 +561,10 @@ function updateSettingsUi() {
  * The drawer and the two dialogs, the button that opens each one, and the fact that only one is open at
  * a time. They share one backdrop, and a `null` id closes whatever is open.
  *
- * Two mechanisms, deliberately: the drawer is slid off-screen rather than hidden, so it can come in from
- * the edge, and `visibility` is what keeps its buttons out of the tab order while it is away. A dialog
- * is simply hidden.
+ * Two mechanisms, deliberately: the drawer starts `hidden` in HTML so it never flashes before CSS
+ * loads, then is unhidden on first open and slid off-screen (`visibility: hidden`) when closed so it
+ * can glide in and out from the edge while keeping its buttons out of the tab order. A dialog is
+ * simply hidden.
  */
 const PANELS = [
   { id: 'menu', opener: 'menu-button', slides: true },
@@ -691,8 +692,14 @@ let copyResetTimer = null;
 function openPanel(id) {
   for (const panel of PANELS) {
     const open = panel.id === id;
-    if (panel.slides) $(panel.id).classList.toggle('is-open', open);
-    else $(panel.id).hidden = !open;
+    if (panel.slides) {
+      const el = $(panel.id);
+      if (open && el.hidden) {
+        el.hidden = false;
+        void el.offsetWidth;
+      }
+      el.classList.toggle('is-open', open);
+    } else $(panel.id).hidden = !open;
     $(panel.opener).setAttribute('aria-expanded', String(open));
   }
   $('sheet-backdrop').hidden = id === null;

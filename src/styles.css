@@ -757,6 +757,8 @@ body.is-away.is-zoomed { padding-bottom: 0; }
   transition: transform 200ms var(--md-sys-motion-easing-emphasized-accelerate), visibility 200ms;
 }
 
+.drawer[hidden] { display: none; }
+
 .drawer.is-open {
   transform: none;
   visibility: visible;

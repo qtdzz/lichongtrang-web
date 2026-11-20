@@ -967,3 +967,98 @@ test('requests persistent storage on standalone PWA launch only when not yet per
     await context.close();
   }
 });
+
+test('does not flash or animate the drawer on cold load before stylesheet arrives', async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 900 },
+    serviceWorkers: 'block',
+  });
+  try {
+    const page = await context.newPage();
+    let stylesheetDeferred = false;
+
+    // Simulate initial paint occurring before stylesheet arrives on a cold load / hard refresh.
+    await page.route('**/', async (route) => {
+      if (route.request().resourceType() !== 'document') return route.continue();
+      const res = await route.fetch();
+      const html = await res.text();
+      const replaced = html.replace(
+        /<link rel="stylesheet"[^>]+href="([^"]+)"[^>]*>/,
+        '<script>setTimeout(() => { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "$1"; document.head.appendChild(l); }, 80);</script>',
+      );
+      stylesheetDeferred = replaced !== html;
+      await route.fulfill({ response: res, body: replaced });
+    });
+
+    await page.addInitScript(() => {
+      window.__menuInitial = null;
+      window.__menuTransitions = [];
+      document.addEventListener('DOMContentLoaded', () => {
+        const menu = document.getElementById('menu');
+        window.__menuInitial = menu
+          ? { hidden: menu.hidden, display: getComputedStyle(menu).display }
+          : null;
+      });
+      for (const type of ['transitionrun', 'transitionstart']) {
+        document.addEventListener(type, (e) => {
+          if (e.target?.id === 'menu') {
+            window.__menuTransitions.push(`${type}:${e.propertyName}`);
+          }
+        }, true);
+      }
+    });
+
+    await page.goto('/', { waitUntil: 'load' });
+    expect(stylesheetDeferred).toBe(true);
+    await page.waitForFunction(() => getComputedStyle(document.getElementById('menu')).position === 'fixed', { timeout: 4000 });
+    await page.waitForTimeout(250);
+
+    const afterLoad = await page.evaluate(() => {
+      const menu = document.getElementById('menu');
+      return {
+        initial: window.__menuInitial,
+        transitions: window.__menuTransitions,
+        after: { hidden: menu.hidden, display: getComputedStyle(menu).display },
+      };
+    });
+    expect(afterLoad.initial).toEqual({ hidden: true, display: 'none' });
+    expect(afterLoad.transitions).toEqual([]);
+    expect(afterLoad.after).toEqual({ hidden: true, display: 'none' });
+
+    await expect(page.locator('#menu-settings')).toBeHidden();
+    expect(await page.evaluate(() => {
+      document.getElementById('menu-settings').focus();
+      return document.activeElement?.id ?? null;
+    })).not.toBe('menu-settings');
+
+    await page.locator('#menu-button').click();
+    await page.waitForFunction(
+      () =>
+        document.getElementById('menu').classList.contains('is-open') &&
+        window.__menuTransitions.includes('transitionstart:transform'),
+      { timeout: 4000 },
+    );
+    expect(await page.locator('#menu').evaluate((el) => el.hidden)).toBe(false);
+    await expect(page.locator('#menu-settings')).toBeVisible();
+
+    await page.locator('#menu-close').click();
+    await page.waitForFunction(() => !document.getElementById('menu').classList.contains('is-open'), { timeout: 4000 });
+    await expect(page.locator('#menu-settings')).toBeHidden();
+    expect(await page.evaluate(() => {
+      document.getElementById('menu-settings').focus();
+      return document.activeElement?.id ?? null;
+    })).not.toBe('menu-settings');
+
+    await page.evaluate(() => { window.__menuTransitions = []; });
+    await page.locator('#menu-button').click();
+    await page.waitForFunction(
+      () =>
+        document.getElementById('menu').classList.contains('is-open') &&
+        window.__menuTransitions.includes('transitionstart:transform'),
+      { timeout: 4000 },
+    );
+    await expect(page.locator('#menu-settings')).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
