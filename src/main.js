@@ -595,6 +595,7 @@ window.addEventListener('beforeinstallprompt', (event) => {
 window.addEventListener('appinstalled', () => {
   deferredInstallPrompt = null;
   updateInstallUi();
+  requestPersistentStorage();
 });
 
 async function triggerInstallPrompt() {
@@ -976,10 +977,19 @@ $('grid').addEventListener('pointerup', (event) => {
 
 /* ------------------------------------------------------------------ offline */
 
-// Ask for persistent storage, where the browser offers it. No browser promises to grant it, and Safari
-// does not implement the request at all - but where it is granted, the offline cache stops being the
-// first thing evicted, which decides whether an installed app still opens offline next week.
-navigator.storage?.persist?.().catch(() => {});
+// Ask for persistent storage only when running as an installed standalone PWA (or right after
+// appinstalled), never on a casual browser visit where Firefox would prompt immediately.
+async function requestPersistentStorage() {
+  try {
+    if (!navigator.storage?.persist) return;
+    if (await navigator.storage.persisted?.()) return;
+    await navigator.storage.persist();
+  } catch {}
+}
+
+if (isStandaloneApp()) {
+  requestPersistentStorage();
+}
 
 function setOfflineBadge() {
   const badge = $('offline-badge');

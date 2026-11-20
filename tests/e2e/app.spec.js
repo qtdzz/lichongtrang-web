@@ -26,6 +26,7 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
 
     window.__persistAsked = false;
     const storage = navigator.storage ?? {};
+    storage.persisted = () => Promise.resolve(false);
     storage.persist = () => {
       window.__persistAsked = true;
       return Promise.resolve(true);
@@ -450,7 +451,7 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
     capable: 'yes',
     statusBar: 'default',
     title: 'Lịch Ông Trăng',
-    asked: true,
+    asked: false,
   });
 
   await snap('phone-away.png');
@@ -728,6 +729,9 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   expect(await page.evaluate(() => window.__promptCalled)).toBe(1);
   expect(await page.locator('#install-prompt').evaluate((el) => el.hidden)).toBe(true);
 
+  await page.evaluate(() => window.dispatchEvent(new Event('appinstalled')));
+  await page.waitForFunction(() => window.__persistAsked === true, { timeout: 4000 });
+
   await page.locator('#install-close').click();
   expect(await page.locator('#install').evaluate((el) => el.hidden)).toBe(true);
   expect(await installMenuRow.getAttribute('aria-expanded')).toBe('false');
@@ -937,4 +941,29 @@ test('sanitizes corrupt or out-of-range localStorage settings on startup', async
   expect(pickerYear).toBeGreaterThanOrEqual(1900);
   expect(pickerYear).toBeLessThanOrEqual(2100);
   expect(noise).toEqual([]);
+});
+
+test('requests persistent storage on standalone PWA launch only when not yet persisted', async ({ browser }) => {
+  for (const alreadyPersisted of [false, true]) {
+    const context = await browser.newContext();
+    await context.addInitScript((persistedValue) => {
+      Object.defineProperty(navigator, 'standalone', { configurable: true, value: true });
+      window.__persistAsked = false;
+      const storage = navigator.storage ?? {};
+      storage.persisted = () => Promise.resolve(persistedValue);
+      storage.persist = () => {
+        window.__persistAsked = true;
+        return Promise.resolve(true);
+      };
+      if (navigator.storage !== storage) Object.defineProperty(navigator, 'storage', { value: storage });
+    }, alreadyPersisted);
+
+    const page = await context.newPage();
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await page.waitForSelector('.cell-lunar', { timeout: 10000 });
+    await page.waitForTimeout(50);
+
+    expect(await page.evaluate(() => Boolean(window.__persistAsked))).toBe(!alreadyPersisted);
+    await context.close();
+  }
 });
