@@ -109,6 +109,14 @@ describe('offline precache audit', () => {
     const headersText = await readFile(join(DIST, '_headers'), 'utf8');
     expect(headersText).toContain('/sw.js');
     expect(headersText).toContain('/assets/*');
+    for (const path of ['/build-info.json', '/LICENSE.txt', '/NOTICE.txt']) {
+      const block = headersText.match(new RegExp(`^${path.replace('.', '\\.')}\\n(?:  .+\\n?)+`, 'm'));
+      expect(block, `missing _headers block for ${path}`).not.toBeNull();
+      expect(block[0]).toContain('X-Robots-Tag: noindex');
+    }
+    const nginxText = await readFile(join(ROOT, 'docker/nginx.conf'), 'utf8');
+    expect(nginxText).toMatch(/location = \/build-info\.json \{[\s\S]*?add_header X-Robots-Tag "noindex";[\s\S]*?\}/);
+    expect(nginxText).toMatch(/location ~ \^\/\(LICENSE\|NOTICE\)\\\.txt\$ \{[\s\S]*?add_header X-Robots-Tag "noindex";[\s\S]*?\}/);
 
     const html = await readFile(join(DIST, 'index.html'), 'utf8');
     const referenced = new Set();
