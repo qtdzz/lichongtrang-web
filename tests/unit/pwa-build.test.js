@@ -12,6 +12,75 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const DIST = join(ROOT, 'dist');
 const ORIGIN = 'https://lich.example';
 const ALLOWED_HTML_METADATA_URL_RE = /^https:\/\/(?:lichongtrang\.com(?:\/[^\s"')]*)?|github\.com\/qtdzz\/lichongtrang-web|schema\.org(?:\/[^\s"')]*)?)$/;
+const ALLOWED_SPEC_ORIGIN_RE = /^https?:\/\/(?:[^/]+\.)?(?:w3\.org|schema\.org|example\.com|localhost)(?:[:/]|$)/;
+
+function collectHtmlAssetRefs(html) {
+  const referenced = new Set();
+  for (const tagMatch of html.matchAll(/<([a-z0-9-]+)\b([^>]*)>/gi)) {
+    const tag = tagMatch[1].toLowerCase();
+    const attrs = tagMatch[2];
+    for (const attrMatch of attrs.matchAll(/\b(?:href|src)\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>"']+))/gi)) {
+      const value = attrMatch[1] ?? attrMatch[2] ?? attrMatch[3];
+      if (value.startsWith('#') || value.startsWith('data:')) continue;
+      if (tag === 'a' && /^https?:\/\//i.test(value)) continue;
+      if (tag === 'link' && /\brel\s*=\s*(?:"canonical"|'canonical'|canonical(?=\s|$))/i.test(attrs)) {
+        if (value !== 'https://lichongtrang.com/') {
+          throw new Error(`Unexpected canonical URL: ${value}`);
+        }
+        continue;
+      }
+      if (/^https?:|^\/\//i.test(value)) {
+        throw new Error(`Disallowed external runtime attribute on <${tag}>: ${value}`);
+      }
+      referenced.add(value.replace(/^\.?\//, ''));
+    }
+    for (const srcsetMatch of attrs.matchAll(/\bsrcset\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>"']+))/gi)) {
+      const rawSrcset = srcsetMatch[1] ?? srcsetMatch[2] ?? srcsetMatch[3];
+      for (const candidate of rawSrcset.split(',')) {
+        const url = candidate.trim().split(/\s+/)[0];
+        if (!url || url.startsWith('#') || url.startsWith('data:')) continue;
+        if (/^https?:|^\/\//i.test(url)) {
+          throw new Error(`Disallowed external srcset URL on <${tag}>: ${url}`);
+        }
+        referenced.add(url.replace(/^\.?\//, ''));
+      }
+    }
+  }
+  for (const scriptMatch of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+    const attrs = scriptMatch[1];
+    const body = scriptMatch[2];
+    if (/\bsrc\s*=/i.test(attrs) || /\btype\s*=\s*(?:"application\/ld\+json"|'application\/ld\+json'|application\/ld\+json(?=\s|$))/i.test(attrs)) {
+      continue;
+    }
+    if (/https?:\/\//i.test(body)) {
+      throw new Error(`Disallowed URL inside inline <script>: ${body}`);
+    }
+  }
+  return referenced;
+}
+
+function assertNoDisallowedExternalUrls(file, rawText) {
+  const text =
+    file === 'index.html'
+      ? rawText.replace(/(<a\b[^>]*?)\s+\bhref\s*=\s*(?:"https?:\/\/[^"]*"|'https?:\/\/[^']*'|https?:\/\/[^\s>"']+)/gi, '$1')
+      : rawText;
+  for (const m of text.matchAll(/https?:\/\/[^\s"')]+/g)) {
+    const url = m[0];
+    if (ALLOWED_SPEC_ORIGIN_RE.test(url)) continue;
+    if (file === 'index.html' && ALLOWED_HTML_METADATA_URL_RE.test(url)) continue;
+    throw new Error(`${file} mentions an external URL: ${url}`);
+  }
+}
+
+function parseJsonLdScripts(html) {
+  const matches = [
+    ...html.matchAll(
+      /<script\b([^>]*\btype\s*=\s*(?:"application\/ld\+json"|'application\/ld\+json'|application\/ld\+json(?=\s|$))[^>]*)>([\s\S]*?)<\/script>/gi,
+    ),
+  ];
+  if (matches.length === 0) throw new Error('Missing JSON-LD script');
+  return matches.map((m) => JSON.parse(m[2]));
+}
 
 async function walk(root, prefix = '') {
   const out = [];
@@ -159,30 +228,7 @@ describe('offline precache audit', () => {
     }
 
     const html = await readFile(join(DIST, 'index.html'), 'utf8');
-    const referenced = new Set();
-
-    for (const tagMatch of html.matchAll(/<([a-z0-9-]+)\b([^>]*)>/gi)) {
-      const tag = tagMatch[1].toLowerCase();
-      const attrs = tagMatch[2];
-      for (const attrMatch of attrs.matchAll(/\b(?:href|src)="([^"]+)"/gi)) {
-        const value = attrMatch[1];
-        if (value.startsWith('#') || value.startsWith('data:')) continue;
-        if (tag === 'a' && /^https?:\/\//.test(value)) continue;
-        if (tag === 'link' && /\brel=["']canonical["']/i.test(attrs)) {
-          expect(value).toBe('https://lichongtrang.com/');
-          continue;
-        }
-        expect(value).not.toMatch(/^https?:|^\/\//);
-        referenced.add(value.replace(/^\.?\//, ''));
-      }
-    }
-
-    for (const scriptMatch of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
-      const attrs = scriptMatch[1];
-      const body = scriptMatch[2];
-      if (/\bsrc=/.test(attrs) || /\btype=["']application\/ld\+json["']/i.test(attrs)) continue;
-      expect(body).not.toMatch(/https?:\/\//i);
-    }
+    const referenced = collectHtmlAssetRefs(html);
 
     const assetFiles = allFiles.filter((f) => f.startsWith('assets/'));
     expect(assetFiles.length).toBeGreaterThanOrEqual(2);
@@ -203,16 +249,7 @@ describe('offline precache audit', () => {
     const textFiles = ['index.html', 'manifest.webmanifest', 'sw.js', ...assetFiles];
     for (const file of textFiles) {
       const rawText = await readFile(join(DIST, file), 'utf8');
-      const text =
-        file === 'index.html'
-          ? rawText.replace(/<a\b[^>]*\bhref="https?:\/\/[^"]+"[^>]*>/gi, '')
-          : rawText;
-      for (const m of text.matchAll(/https?:\/\/[^\s"')]+/g)) {
-        const url = m[0];
-        if (/w3\.org|schema\.org|example\.com|localhost/.test(url)) continue;
-        if (file === 'index.html' && ALLOWED_HTML_METADATA_URL_RE.test(url)) continue;
-        throw new Error(`${file} mentions an external URL: ${url}`);
-      }
+      assertNoDisallowedExternalUrls(file, rawText);
     }
   });
 
@@ -302,9 +339,9 @@ describe('offline precache audit', () => {
     expect(html).not.toMatch(/<meta\s+name="keywords"/i);
     expect(html).not.toMatch(/hreflang=/i);
 
-    const ldMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
-    expect(ldMatch).not.toBeNull();
-    const ld = JSON.parse(ldMatch[1]);
+    const ldDocs = parseJsonLdScripts(html);
+    expect(ldDocs).toHaveLength(1);
+    const ld = ldDocs[0];
     expect(ld['@context']).toBe('https://schema.org');
     expect(ld['@graph'].map((n) => n['@type'])).toEqual(['WebSite', 'WebApplication']);
     const appNode = ld['@graph'][1];
@@ -321,6 +358,29 @@ describe('offline precache audit', () => {
     expect(noscript).toContain('2100');
     expect(noscript).toContain('LICENSE.txt');
     expect(noscript).toContain('NOTICE.txt');
+  });
+
+  it('rejects single-quoted/unquoted/srcset bypasses, spoofed allowlist domains, external <a> event attributes, and malformed JSON-LD blocks', () => {
+    expect(() => collectHtmlAssetRefs("<script src='https://lichongtrang.com/tracker.js'></script>")).toThrow();
+    expect(() => collectHtmlAssetRefs('<link rel=stylesheet href=https://lichongtrang.com/app.css>')).toThrow();
+    expect(() => collectHtmlAssetRefs('<img srcset="https://lichongtrang.com/a.png 1x, icons/b.png 2x">')).toThrow();
+    expect(() => collectHtmlAssetRefs('<script>fetch("https://evil.com/x")</script>')).toThrow();
+
+    expect(() => assertNoDisallowedExternalUrls('sw.js', 'https://tracker.evil/schema.org')).toThrow();
+    expect(() => assertNoDisallowedExternalUrls('index.html', 'https://evil.com/?host=localhost')).toThrow();
+    expect(() => assertNoDisallowedExternalUrls('index.html', 'https://lichongtrang.com.evil.com/')).toThrow();
+    expect(() =>
+      assertNoDisallowedExternalUrls(
+        'index.html',
+        '<a href="https://github.com/qtdzz/lichongtrang-web" ping="https://evil.com/p" onclick="fetch(\'https://evil.com\')">x</a>',
+      ),
+    ).toThrow();
+
+    expect(() =>
+      parseJsonLdScripts(
+        '<script type="application/ld+json">{}</script><script type="application/ld+json">{bad json}</script>',
+      ),
+    ).toThrow();
   });
 });
 
