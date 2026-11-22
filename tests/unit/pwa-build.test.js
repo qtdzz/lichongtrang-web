@@ -237,6 +237,38 @@ describe('offline precache audit', () => {
       expect(buf.readUInt32BE(20)).toBe(height);
     }
   });
+
+  it('emits robots.txt, sitemap.xml, llms.txt, and 1200x630 og-image.png outside the SW precache', async () => {
+    const swText = await readFile(join(DIST, 'sw.js'), 'utf8');
+    const precached = new Set(JSON.parse(swText.match(/const PRECACHE = (\[[\s\S]*?\]);/)[1]));
+
+    for (const file of ['robots.txt', 'sitemap.xml', 'llms.txt', 'og-image.png']) {
+      expect(existsSync(join(DIST, file)), `${file} missing from dist/`).toBe(true);
+      expect(precached.has(file), `${file} must not be precached`).toBe(false);
+    }
+
+    const robots = await readFile(join(DIST, 'robots.txt'), 'utf8');
+    expect(robots).toContain('User-agent: *');
+    expect(robots).toContain('Allow: /');
+    expect(robots).toContain('Sitemap: https://lichongtrang.com/sitemap.xml');
+
+    const sitemap = await readFile(join(DIST, 'sitemap.xml'), 'utf8');
+    expect(sitemap).toContain('<loc>https://lichongtrang.com/</loc>');
+    expect(sitemap).toContain('http://www.sitemaps.org/schemas/sitemap/0.9');
+
+    const llms = await readFile(join(DIST, 'llms.txt'), 'utf8');
+    expect(llms).toContain('# Lịch Ông Trăng');
+    expect(llms).toContain('Vietnamese Lunar Calendar');
+    expect(llms).toContain('https://lichongtrang.com/');
+    expect(llms).toContain('https://github.com/qtdzz/lichongtrang-web');
+    expect(llms).toContain('https://lichongtrang.com/NOTICE.txt');
+    expect(llms).toContain('https://lichongtrang.com/LICENSE.txt');
+
+    const ogPng = await readFile(join(DIST, 'og-image.png'));
+    expect(ogPng.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+    expect(ogPng.readUInt32BE(16)).toBe(1200);
+    expect(ogPng.readUInt32BE(20)).toBe(630);
+  });
 });
 
 describe('service worker offline execution', () => {

@@ -1,0 +1,31 @@
+# Lịch Ông Trăng — Âm Lịch Việt Nam (Vietnamese Lunar Calendar)
+
+> Free, ad-free, 100% offline-first Vietnamese lunisolar calendar Progressive Web App (PWA) for viewing Vietnamese lunar dates, Can-Chi, 24 tiết khí (solar terms), and Vietnamese holidays from 1900 to 2100.
+> Ứng dụng web xem âm lịch Việt Nam (lịch âm dương) miễn phí, không quảng cáo, không theo dõi và hoạt động hoàn toàn offline từ năm 1900 đến 2100.
+
+## What Lịch Ông Trăng Is / Giới thiệu
+
+- **URL:** https://lichongtrang.com/
+- **Languages:** Vietnamese UI (`lang="vi"`), serving Vietnamese and English discovery for the Vietnamese Lunar Calendar.
+- **Scope:** Strictly an ad-free, privacy-respecting Vietnamese lunisolar calendar utility. It does **not** include horoscopes, fortune-telling (*tử vi*, *xem bói*), auspicious hours (*giờ hoàng đạo*), accounts, analytics, or external network requests.
+- **Installable Offline PWA:** Works in any modern browser and can be installed to iOS, Android, and desktop home screens via Service Worker precaching with zero backend dependencies.
+
+## Features / Tính năng chính
+
+- **Solar & Lunar Conversion (1900–2100):** Converts Gregorian (Dương lịch) and Vietnamese Lunar (Âm lịch) dates, including leap months (*tháng nhuận*).
+- **Can-Chi & Zodiac:** Displays Can-Chi year and day (*Can Chi năm, ngày*) and lunar zodiac year (*con giáp*).
+- **24 Tiết Khí (Solar Terms):** Marks all 24 Vietnamese solar terms directly in the month grid and monthly legend.
+- **Vietnamese Holidays:** Highlights major Vietnamese solar and lunar holidays (*Tết Nguyên Đán*, *Giỗ Tổ Hùng Vương*, *Tết Đoan Ngọ*, *Vu Lan*, *Tết Trung Thu*, etc.) and next-holiday countdowns.
+- **Timezone Selection:** Supports Vietnam standard time (`UTC+7`) or local device timezone, plus Monday/Sunday week start.
+
+## Algorithm & Licensing / Thuật toán & Giấy phép
+
+- **Algorithm:** Client-side ES module implementation of Dr. Hồ Ngọc Đức's Vietnamese lunar calendar algorithm (*Thuật toán tính âm lịch*), based on Jean Meeus's *Astronomical Algorithms*.
+- **License Terms:** Personal, non-commercial use only as combined — app shell licensed under GNU AGPL-3.0-only with Section 7 linking exception, combined with the 2006 non-commercial `amlich` engine.
+
+## Canonical Links
+
+- [Live Web App](https://lichongtrang.com/): Offline-first Vietnamese Lunar Calendar PWA.
+- [Source Repository](https://github.com/qtdzz/lichongtrang-web): Full source code, unit tests, 132-case JVM corpus checks, and Playwright E2E suite.
+- [Dual-License Notice](https://lichongtrang.com/NOTICE.txt): AGPL-3.0 Section 7 exception and Hồ Ngọc Đức 2006 `amlich` notice.
+- [GNU AGPL-3.0 License](https://lichongtrang.com/LICENSE.txt): Full AGPL-3.0 license text for the application shell.

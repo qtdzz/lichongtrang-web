@@ -1,0 +1,45 @@
+<!--
+  Social preview source (Open Graph / Twitter Card) for Lịch Ông Trăng.
+  To regenerate public/og-image.png via librsvg:
+    rsvg-convert -w 1200 -h 630 docs/assets/og-image.svg -o public/og-image.png
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ebe3fb"/>
+      <stop offset="100%" stop-color="#d6c8f2"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="44" y="44" width="1112" height="542" rx="36" fill="#f7f3ff" stroke="#c3b1eb" stroke-width="3"/>
+
+  <!-- Pastel Iris badge + Buttercream "Ông Trăng" mascot (from public/icons/icon.svg) -->
+  <g transform="translate(104, 155) scale(0.625)">
+    <circle cx="256" cy="256" r="204" fill="#9678e3" stroke="#432787" stroke-width="10"/>
+    <path d="M 332 118 C 212 102, 116 188, 126 292 C 136 390, 228 438, 342 396 C 360 389, 366 365, 348 355 C 278 318, 258 228, 326 162 C 344 144, 350 121, 332 118 Z" fill="#7353c4" transform="translate(8, 10)"/>
+    <path d="M 332 118 C 212 102, 116 188, 126 292 C 136 390, 228 438, 342 396 C 360 389, 366 365, 348 355 C 278 318, 258 228, 326 162 C 344 144, 350 121, 332 118 Z" fill="#fff3a8" stroke="#432787" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M 272 136 C 190 150, 146 212, 152 284" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+    <ellipse cx="182" cy="276" rx="15" ry="9.5" fill="#ffa6b8" opacity="0.9"/>
+    <ellipse cx="254" cy="286" rx="14" ry="9" fill="#ffa6b8" opacity="0.9"/>
+    <circle cx="195" cy="252" r="11" fill="#432787"/>
+    <circle cx="191" cy="247" r="4" fill="#ffffff"/>
+    <circle cx="245" cy="260" r="11" fill="#432787"/>
+    <circle cx="241" cy="255" r="4" fill="#ffffff"/>
+    <path d="M 210 272 Q 218 284 230 274" fill="none" stroke="#432787" stroke-width="6.5" stroke-linecap="round"/>
+    <path d="M 366 202 Q 366 234 398 234 Q 366 234 366 266 Q 366 234 334 234 Q 366 234 366 202 Z" fill="#fffdf0" stroke="#432787" stroke-width="9" stroke-linejoin="round"/>
+    <circle cx="326" cy="306" r="12" fill="#f3edf7" stroke="#432787" stroke-width="7"/>
+  </g>
+
+  <g font-family="Fira Sans, DejaVu Sans, sans-serif">
+    <rect x="472" y="156" width="234" height="40" rx="20" fill="#e4daf9"/>
+    <text x="589" y="183" text-anchor="middle" font-size="20" font-weight="600" fill="#432787">lichongtrang.com</text>
+
+    <text x="472" y="272" font-size="68" font-weight="700" fill="#211442">Lịch Ông Trăng</text>
+    <text x="472" y="336" font-size="34" font-weight="600" fill="#432787">Âm Lịch Việt Nam</text>
+    <text x="472" y="380" font-size="28" font-weight="500" fill="#593fa0">Vietnamese Lunar Calendar</text>
+
+    <rect x="472" y="422" width="616" height="50" rx="25" fill="#e8dffb" stroke="#ccbced" stroke-width="2"/>
+    <text x="780" y="454" text-anchor="middle" font-size="21" font-weight="600" fill="#351e70">1900–2100 · Can Chi · 24 Tiết Khí · Offline · Không quảng cáo</text>
+  </g>
+</svg>
