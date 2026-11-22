@@ -25,11 +25,37 @@ export async function hashTree(root, { skip = [] } = {}) {
   return { hash: digest.digest('hex'), files };
 }
 
-function licenseMimeMiddleware(req, res, next) {
-  const match = req.url && req.url.match(/^\/+((?:LICENSE|NOTICE)\.txt)(?:\?|$)/);
-  if (match) {
-    req.url = `/${match[1]}`;
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+export const NON_PRECACHED_FILES = ['_headers', 'robots.txt', 'sitemap.xml', 'llms.txt', 'og-image.png'];
+
+const STATIC_META_RULES = [
+  {
+    pattern: /^\/+((?:LICENSE|NOTICE)\.txt)(?:\?|$)/,
+    rewrite: (m) => `/${m[1]}`,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Robots-Tag': 'noindex' },
+  },
+  {
+    pattern: /^\/+((?:robots|llms)\.txt)(?:\?|$)/,
+    rewrite: (m) => `/${m[1]}`,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' },
+  },
+  {
+    pattern: /^\/+(sitemap\.xml)(?:\?|$)/,
+    rewrite: (m) => `/${m[1]}`,
+    headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'no-cache' },
+  },
+];
+
+export function staticMetaMimeMiddleware(req, res, next) {
+  if (req.url) {
+    for (const rule of STATIC_META_RULES) {
+      const match = req.url.match(rule.pattern);
+      if (!match) continue;
+      req.url = rule.rewrite(match);
+      for (const [header, value] of Object.entries(rule.headers)) {
+        res.setHeader(header, value);
+      }
+      break;
+    }
   }
   next();
 }
@@ -44,17 +70,17 @@ function pwaBuildPlugin() {
       outDir = resolve(config.root, config.build.outDir);
     },
     configureServer(server) {
-      server.middlewares.use(licenseMimeMiddleware);
+      server.middlewares.use(staticMetaMimeMiddleware);
     },
     configurePreviewServer(server) {
-      server.middlewares.use(licenseMimeMiddleware);
+      server.middlewares.use(staticMetaMimeMiddleware);
     },
     async closeBundle() {
       const enginePath = resolve(rootDir, 'src/engine/amlich.js');
       const engineBytes = await readFile(enginePath);
       const engineHash = createHash('sha256').update(engineBytes).digest('hex');
 
-      const web = await hashTree(outDir, { skip: ['build-info.json', 'sw.js', '_headers'] });
+      const web = await hashTree(outDir, { skip: ['build-info.json', 'sw.js', ...NON_PRECACHED_FILES] });
       const info = {
         engineHash,
         engineFiles: ['amlich.js'],
@@ -63,7 +89,7 @@ function pwaBuildPlugin() {
       };
       await writeFile(join(outDir, 'build-info.json'), JSON.stringify(info, null, 2) + '\n');
 
-      const all = await hashTree(outDir, { skip: ['sw.js', '_headers'] });
+      const all = await hashTree(outDir, { skip: ['sw.js', ...NON_PRECACHED_FILES] });
       const version = `lot-web-${all.hash.slice(0, 12)}`;
       const template = await readFile(resolve(rootDir, 'src/sw.template.js'), 'utf8');
       const sw = template

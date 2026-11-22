@@ -12,6 +12,7 @@
 
 const VERSION = '__VERSION__';
 const PRECACHE = __PRECACHE__;
+const PASSTHROUGH_RE = /(?:^|\/)(?:robots\.txt|sitemap\.xml|llms\.txt|og-image\.png)$/;
 
 async function cleanResponse(response) {
   if (!response.redirected) return response;
@@ -58,6 +59,8 @@ self.addEventListener('fetch', (event) => {
   // Never cache or touch anything cross-origin. This app has no third-party requests at all, and
   // keeping it that way is what makes "works offline" a property rather than a hope.
   if (url.origin !== self.location.origin) return;
+  // Crawler and social-preview assets live outside the offline precache so updates reach bots directly.
+  if (PASSTHROUGH_RE.test(url.pathname)) return;
 
   // A navigation is served the exact cached file if one matches (e.g. LICENSE.txt), otherwise the
   // cached shell (index.html), so opening the app or reading the licence with no network works.

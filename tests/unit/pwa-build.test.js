@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { build } from 'vite';
 import { beforeAll, describe, it, expect } from 'vitest';
-import { hashTree } from '../../vite.config.js';
+import { hashTree, NON_PRECACHED_FILES, staticMetaMimeMiddleware } from '../../vite.config.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const DIST = join(ROOT, 'dist');
@@ -28,15 +28,38 @@ beforeAll(async () => {
 
 describe('offline precache audit', () => {
   it('only skips exact filename or path-segment matches in hashTree', async () => {
+    expect(NON_PRECACHED_FILES).toEqual(['_headers', 'robots.txt', 'sitemap.xml', 'llms.txt', 'og-image.png']);
     const dir = await mkdtemp(join(tmpdir(), 'lot-hash-'));
     try {
       await mkdir(join(dir, 'assets'), { recursive: true });
       await writeFile(join(dir, 'sw.js'), 'worker');
-      await writeFile(join(dir, 'assets/index-a1b2_sw.js'), 'bundle');
-      const { files } = await hashTree(dir, { skip: ['sw.js'] });
-      expect(files).toEqual(['assets/index-a1b2_sw.js']);
+      for (const name of [...NON_PRECACHED_FILES, 'index.html', 'build-info.json', 'assets/index-a1b2_sw.js']) {
+        await writeFile(join(dir, name), 'data');
+      }
+      const { files } = await hashTree(dir, { skip: ['sw.js', ...NON_PRECACHED_FILES] });
+      expect(files).toEqual(['assets/index-a1b2_sw.js', 'build-info.json', 'index.html']);
     } finally {
       await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('sets UTF-8 MIME, cache, and noindex headers in staticMetaMimeMiddleware', () => {
+    const cases = [
+      ['/robots.txt', '/robots.txt', { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' }],
+      ['//llms.txt?v=1', '/llms.txt', { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' }],
+      ['/sitemap.xml', '/sitemap.xml', { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'no-cache' }],
+      ['/LICENSE.txt', '/LICENSE.txt', { 'Content-Type': 'text/plain; charset=utf-8', 'X-Robots-Tag': 'noindex' }],
+      ['/NOTICE.txt?raw=1', '/NOTICE.txt', { 'Content-Type': 'text/plain; charset=utf-8', 'X-Robots-Tag': 'noindex' }],
+    ];
+    for (const [inputUrl, normalizedUrl, expectedHeaders] of cases) {
+      const headers = {};
+      let nextCalled = false;
+      const req = { url: inputUrl };
+      const res = { setHeader: (k, v) => { headers[k] = v; } };
+      staticMetaMimeMiddleware(req, res, () => { nextCalled = true; });
+      expect(nextCalled).toBe(true);
+      expect(req.url).toBe(normalizedUrl);
+      expect(headers).toEqual(expectedHeaders);
     }
   });
 
@@ -117,6 +140,22 @@ describe('offline precache audit', () => {
     const nginxText = await readFile(join(ROOT, 'docker/nginx.conf'), 'utf8');
     expect(nginxText).toMatch(/location = \/build-info\.json \{[\s\S]*?add_header X-Robots-Tag "noindex";[\s\S]*?\}/);
     expect(nginxText).toMatch(/location ~ \^\/\(LICENSE\|NOTICE\)\\\.txt\$ \{[\s\S]*?add_header X-Robots-Tag "noindex";[\s\S]*?\}/);
+    for (const [path, contentType] of [
+      ['/robots.txt', 'text/plain; charset=utf-8'],
+      ['/llms.txt', 'text/plain; charset=utf-8'],
+      ['/sitemap.xml', 'application/xml; charset=utf-8'],
+    ]) {
+      const block = headersText.match(new RegExp(`^${path.replace('.', '\\.')}\\n(?:  .+\\n?)+`, 'm'));
+      expect(block, `missing _headers block for ${path}`).not.toBeNull();
+      expect(block[0]).toContain(`Content-Type: ${contentType}`);
+      expect(block[0]).toContain('Cache-Control: no-cache');
+    }
+    expect(nginxText).toMatch(/charset_types[^;]*application\/xml/);
+    expect(nginxText).toMatch(/gzip_types[^;]*application\/xml/);
+    expect(nginxText).toMatch(/gzip_types[^;]*text\/plain/);
+    for (const path of ['/robots.txt', '/llms.txt', '/sitemap.xml']) {
+      expect(nginxText).toMatch(new RegExp(`location = ${path.replace('.', '\\.')} \\{[\\s\\S]*?add_header Cache-Control "no-cache";[\\s\\S]*?\\}`));
+    }
 
     const html = await readFile(join(DIST, 'index.html'), 'utf8');
     const referenced = new Set();
@@ -376,5 +415,10 @@ describe('service worker offline execution', () => {
 
     const missingRes = await request('missing-file.js', 'cors').catch(() => null);
     expect(missingRes?.ok ?? false).toBe(false);
+
+    for (const path of ['robots.txt', 'sitemap.xml', 'llms.txt', 'og-image.png']) {
+      expect(await request(path, 'navigate')).toBeNull();
+      expect(await request(path, 'cors')).toBeNull();
+    }
   });
 });
