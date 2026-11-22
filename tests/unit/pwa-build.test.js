@@ -11,6 +11,7 @@ import { hashTree, NON_PRECACHED_FILES, staticMetaMimeMiddleware } from '../../v
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const DIST = join(ROOT, 'dist');
 const ORIGIN = 'https://lich.example';
+const ALLOWED_HTML_METADATA_URL_RE = /^https:\/\/(?:lichongtrang\.com(?:\/[^\s"')]*)?|github\.com\/qtdzz\/lichongtrang-web|schema\.org(?:\/[^\s"')]*)?)$/;
 
 async function walk(root, prefix = '') {
   const out = [];
@@ -160,13 +161,27 @@ describe('offline precache audit', () => {
     const html = await readFile(join(DIST, 'index.html'), 'utf8');
     const referenced = new Set();
 
-    for (const m of html.matchAll(/<([a-z0-9-]+)\b[^>]*?\b(?:href|src)="([^"]+)"/gi)) {
-      const tag = m[1].toLowerCase();
-      const value = m[2];
-      if (value.startsWith('#') || value.startsWith('data:')) continue;
-      if (tag === 'a' && /^https?:\/\//.test(value)) continue;
-      expect(value).not.toMatch(/^https?:|^\/\//);
-      referenced.add(value.replace(/^\.?\//, ''));
+    for (const tagMatch of html.matchAll(/<([a-z0-9-]+)\b([^>]*)>/gi)) {
+      const tag = tagMatch[1].toLowerCase();
+      const attrs = tagMatch[2];
+      for (const attrMatch of attrs.matchAll(/\b(?:href|src)="([^"]+)"/gi)) {
+        const value = attrMatch[1];
+        if (value.startsWith('#') || value.startsWith('data:')) continue;
+        if (tag === 'a' && /^https?:\/\//.test(value)) continue;
+        if (tag === 'link' && /\brel=["']canonical["']/i.test(attrs)) {
+          expect(value).toBe('https://lichongtrang.com/');
+          continue;
+        }
+        expect(value).not.toMatch(/^https?:|^\/\//);
+        referenced.add(value.replace(/^\.?\//, ''));
+      }
+    }
+
+    for (const scriptMatch of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+      const attrs = scriptMatch[1];
+      const body = scriptMatch[2];
+      if (/\bsrc=/.test(attrs) || /\btype=["']application\/ld\+json["']/i.test(attrs)) continue;
+      expect(body).not.toMatch(/https?:\/\//i);
     }
 
     const assetFiles = allFiles.filter((f) => f.startsWith('assets/'));
@@ -195,6 +210,7 @@ describe('offline precache audit', () => {
       for (const m of text.matchAll(/https?:\/\/[^\s"')]+/g)) {
         const url = m[0];
         if (/w3\.org|schema\.org|example\.com|localhost/.test(url)) continue;
+        if (file === 'index.html' && ALLOWED_HTML_METADATA_URL_RE.test(url)) continue;
         throw new Error(`${file} mentions an external URL: ${url}`);
       }
     }
@@ -268,6 +284,43 @@ describe('offline precache audit', () => {
     expect(ogPng.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
     expect(ogPng.readUInt32BE(16)).toBe(1200);
     expect(ogPng.readUInt32BE(20)).toBe(630);
+  });
+
+  it('includes bilingual SEO metadata, Open Graph, JSON-LD, and semantic noscript in built HTML', async () => {
+    expect(ALLOWED_HTML_METADATA_URL_RE.test('https://cdn.example.net/tracker.js')).toBe(false);
+    expect(ALLOWED_HTML_METADATA_URL_RE.test('https://fonts.googleapis.com/css2')).toBe(false);
+
+    const html = await readFile(join(DIST, 'index.html'), 'utf8');
+    expect(html).toContain('<title>Lịch Ông Trăng — Âm Lịch Việt Nam (Vietnamese Lunar Calendar)</title>');
+    expect(html).toContain('<meta name="description" content="Xem âm lịch Việt Nam (Vietnamese lunar calendar) miễn phí, không quảng cáo, chạy offline: lịch âm dương 1900–2100, Can Chi, 24 tiết khí và ngày lễ Việt Nam.">');
+    expect(html).toContain('<link rel="canonical" href="https://lichongtrang.com/">');
+    expect(html).toContain('<meta name="robots" content="index, follow, max-image-preview:large">');
+    expect(html).toContain('<meta name="apple-mobile-web-app-title" content="Lịch Ông Trăng">');
+    expect(html).toContain('<meta property="og:url" content="https://lichongtrang.com/">');
+    expect(html).toContain('<meta property="og:image" content="https://lichongtrang.com/og-image.png">');
+    expect(html).toContain('<meta name="twitter:card" content="summary_large_image">');
+    expect(html).not.toMatch(/<meta\s+name="keywords"/i);
+    expect(html).not.toMatch(/hreflang=/i);
+
+    const ldMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+    expect(ldMatch).not.toBeNull();
+    const ld = JSON.parse(ldMatch[1]);
+    expect(ld['@context']).toBe('https://schema.org');
+    expect(ld['@graph'].map((n) => n['@type'])).toEqual(['WebSite', 'WebApplication']);
+    const appNode = ld['@graph'][1];
+    expect(appNode.url).toBe('https://lichongtrang.com/');
+    expect(appNode.isAccessibleForFree).toBe(true);
+    expect(appNode.inLanguage).toEqual(['vi', 'en']);
+    expect(appNode.license).toBe('https://lichongtrang.com/NOTICE.txt');
+    expect(appNode.sameAs).toContain('https://github.com/qtdzz/lichongtrang-web');
+
+    const noscript = html.match(/<noscript>([\s\S]*?)<\/noscript>/)?.[1] ?? '';
+    expect(noscript).toContain('Trang này cần JavaScript để tính lịch âm.');
+    expect(noscript).toContain('Vietnamese Lunar Calendar');
+    expect(noscript).toContain('1900');
+    expect(noscript).toContain('2100');
+    expect(noscript).toContain('LICENSE.txt');
+    expect(noscript).toContain('NOTICE.txt');
   });
 });
 
