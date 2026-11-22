@@ -1,6 +1,6 @@
 # Lịch Ông Trăng — Âm Lịch Việt Nam (Vietnamese Lunar Calendar)
 
-> Free, ad-free, 100% offline-first Vietnamese lunisolar calendar Progressive Web App (PWA) for viewing Vietnamese lunar dates, Can-Chi, 24 tiết khí (solar terms), and Vietnamese holidays from 1900 to 2100.
+> Free, ad-free, 100% offline-first Vietnamese lunisolar calendar Progressive Web App (PWA) for viewing Vietnamese lunar dates, Can-Chi, 24 tiết khí (solar terms), and Vietnamese lunar holidays from 1900 to 2100.
 > Ứng dụng web xem âm lịch Việt Nam (lịch âm dương) miễn phí, không quảng cáo, không theo dõi và hoạt động hoàn toàn offline từ năm 1900 đến 2100.
 
 ## What Lịch Ông Trăng Is / Giới thiệu
@@ -15,7 +15,7 @@
 - **Solar & Lunar Conversion (1900–2100):** Converts Gregorian (Dương lịch) and Vietnamese Lunar (Âm lịch) dates, including leap months (*tháng nhuận*).
 - **Can-Chi & Zodiac:** Displays Can-Chi year and day (*Can Chi năm, ngày*) and lunar zodiac year (*con giáp*).
 - **24 Tiết Khí (Solar Terms):** Marks all 24 Vietnamese solar terms directly in the month grid and monthly legend.
-- **Vietnamese Holidays:** Highlights major Vietnamese solar and lunar holidays (*Tết Nguyên Đán*, *Giỗ Tổ Hùng Vương*, *Tết Đoan Ngọ*, *Vu Lan*, *Tết Trung Thu*, etc.) and next-holiday countdowns.
+- **Vietnamese Lunar Holidays:** Highlights 12 traditional Vietnamese lunar holidays (*Tết Nguyên Đán*, *Giỗ Tổ Hùng Vương*, *Tết Đoan Ngọ*, *Vu Lan*, *Tết Trung Thu*, *Ông Công Ông Táo*, etc.) and next-holiday countdowns.
 - **Timezone Selection:** Supports Vietnam standard time (`UTC+7`) or local device timezone, plus Monday/Sunday week start.
 
 ## Algorithm & Licensing / Thuật toán & Giấy phép

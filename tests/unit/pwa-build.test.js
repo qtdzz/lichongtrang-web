@@ -12,7 +12,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const DIST = join(ROOT, 'dist');
 const ORIGIN = 'https://lich.example';
 const ALLOWED_HTML_METADATA_URL_RE = /^https:\/\/(?:lichongtrang\.com(?:\/[^\s"')]*)?|github\.com\/qtdzz\/lichongtrang-web|schema\.org(?:\/[^\s"')]*)?)$/;
-const ALLOWED_SPEC_ORIGIN_RE = /^https?:\/\/(?:[^/]+\.)?(?:w3\.org|schema\.org|example\.com|localhost)(?:[:/]|$)/;
+const ALLOWED_SPEC_ORIGIN_RE = /^https?:\/\/(?:www\.)?w3\.org(?:\/|$)|^https:\/\/schema\.org(?:\/|$)/;
 
 function collectHtmlAssetRefs(html) {
   const referenced = new Set();
@@ -20,10 +20,10 @@ function collectHtmlAssetRefs(html) {
     const tag = tagMatch[1].toLowerCase();
     const attrs = tagMatch[2];
     for (const attrMatch of attrs.matchAll(/\b(?:href|src)\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>"']+))/gi)) {
-      const value = attrMatch[1] ?? attrMatch[2] ?? attrMatch[3];
-      if (value.startsWith('#') || value.startsWith('data:')) continue;
+      const value = (attrMatch[1] ?? attrMatch[2] ?? attrMatch[3]).trim();
+      if (/^(?:#|data:)/i.test(value)) continue;
       if (tag === 'a' && /^https?:\/\//i.test(value)) continue;
-      if (tag === 'link' && /\brel\s*=\s*(?:"canonical"|'canonical'|canonical(?=\s|$))/i.test(attrs)) {
+      if (tag === 'link' && /(?:^|\s)rel\s*=\s*(?:"canonical"|'canonical'|canonical(?=\s|$))/i.test(attrs)) {
         if (value !== 'https://lichongtrang.com/') {
           throw new Error(`Unexpected canonical URL: ${value}`);
         }
@@ -38,7 +38,7 @@ function collectHtmlAssetRefs(html) {
       const rawSrcset = srcsetMatch[1] ?? srcsetMatch[2] ?? srcsetMatch[3];
       for (const candidate of rawSrcset.split(',')) {
         const url = candidate.trim().split(/\s+/)[0];
-        if (!url || url.startsWith('#') || url.startsWith('data:')) continue;
+        if (!url || /^(?:#|data:)/i.test(url)) continue;
         if (/^https?:|^\/\//i.test(url)) {
           throw new Error(`Disallowed external srcset URL on <${tag}>: ${url}`);
         }
@@ -52,7 +52,7 @@ function collectHtmlAssetRefs(html) {
     if (/\bsrc\s*=/i.test(attrs) || /\btype\s*=\s*(?:"application\/ld\+json"|'application\/ld\+json'|application\/ld\+json(?=\s|$))/i.test(attrs)) {
       continue;
     }
-    if (/https?:\/\//i.test(body)) {
+    if (/https?:\/\/|['"`]\/\/[a-z0-9.-]/i.test(body)) {
       throw new Error(`Disallowed URL inside inline <script>: ${body}`);
     }
   }
@@ -208,8 +208,11 @@ describe('offline precache audit', () => {
       expect(block[0]).toContain('X-Robots-Tag: noindex');
     }
     const nginxText = await readFile(join(ROOT, 'docker/nginx.conf'), 'utf8');
-    expect(nginxText).toMatch(/location = \/build-info\.json \{[\s\S]*?add_header X-Robots-Tag "noindex";[\s\S]*?\}/);
-    expect(nginxText).toMatch(/location ~ \^\/\(LICENSE\|NOTICE\)\\\.txt\$ \{[\s\S]*?add_header X-Robots-Tag "noindex";[\s\S]*?\}/);
+    expect(nginxText).toMatch(/location = \/build-info\.json \{((?:[^{}]|\{[^{}]*\})*)\}/);
+    const buildInfoBlock = nginxText.match(/location = \/build-info\.json \{((?:[^{}]|\{[^{}]*\})*)\}/)?.[1] ?? '';
+    expect(buildInfoBlock).toContain('add_header X-Robots-Tag "noindex";');
+    const licenseBlock = nginxText.match(/location ~ \^\/\(LICENSE\|NOTICE\)\\\.txt\$ \{((?:[^{}]|\{[^{}]*\})*)\}/)?.[1] ?? '';
+    expect(licenseBlock).toContain('add_header X-Robots-Tag "noindex";');
     for (const [path, contentType] of [
       ['/robots.txt', 'text/plain; charset=utf-8'],
       ['/llms.txt', 'text/plain; charset=utf-8'],
@@ -220,11 +223,22 @@ describe('offline precache audit', () => {
       expect(block[0]).toContain(`Content-Type: ${contentType}`);
       expect(block[0]).toContain('Cache-Control: no-cache');
     }
-    expect(nginxText).toMatch(/charset_types[^;]*application\/xml/);
-    expect(nginxText).toMatch(/gzip_types[^;]*application\/xml/);
-    expect(nginxText).toMatch(/gzip_types[^;]*text\/plain/);
+    const charsetLine = nginxText.match(/^\s*charset_types\s+([^;]+);/m)?.[1] ?? '';
+    expect(charsetLine).not.toContain('text/html');
+    expect(charsetLine).toContain('application/xml');
+    expect(charsetLine).toContain('text/plain');
+    expect(charsetLine).toContain('text/javascript');
+    const gzipLine = nginxText.match(/^\s*gzip_types\s+([^;]+);/m)?.[1] ?? '';
+    expect(gzipLine).toContain('application/xml');
+    expect(gzipLine).toContain('text/plain');
+    expect(gzipLine).toContain('text/javascript');
     for (const path of ['/robots.txt', '/llms.txt', '/sitemap.xml']) {
-      expect(nginxText).toMatch(new RegExp(`location = ${path.replace('.', '\\.')} \\{[\\s\\S]*?add_header Cache-Control "no-cache";[\\s\\S]*?\\}`));
+      const block = nginxText.match(new RegExp(`location = ${path.replace('.', '\\.')} \\{((?:[^{}]|\\{[^{}]*\\})*)\\}`));
+      expect(block, `missing nginx location for ${path}`).not.toBeNull();
+      expect(block[1]).toContain('add_header Cache-Control "no-cache";');
+      if (path === '/sitemap.xml') {
+        expect(block[1]).toContain('types { application/xml xml; }');
+      }
     }
 
     const html = await readFile(join(DIST, 'index.html'), 'utf8');
@@ -312,6 +326,8 @@ describe('offline precache audit', () => {
     const llms = await readFile(join(DIST, 'llms.txt'), 'utf8');
     expect(llms).toContain('# Lịch Ông Trăng');
     expect(llms).toContain('Vietnamese Lunar Calendar');
+    expect(llms).toContain('12 traditional Vietnamese lunar holidays');
+    expect(llms).not.toContain('solar and lunar holidays');
     expect(llms).toContain('https://lichongtrang.com/');
     expect(llms).toContain('https://github.com/qtdzz/lichongtrang-web');
     expect(llms).toContain('https://lichongtrang.com/NOTICE.txt');
@@ -335,6 +351,7 @@ describe('offline precache audit', () => {
     expect(html).toContain('<meta name="apple-mobile-web-app-title" content="Lịch Ông Trăng">');
     expect(html).toContain('<meta property="og:url" content="https://lichongtrang.com/">');
     expect(html).toContain('<meta property="og:image" content="https://lichongtrang.com/og-image.png">');
+    expect(html).not.toContain('og:locale:alternate');
     expect(html).toContain('<meta name="twitter:card" content="summary_large_image">');
     expect(html).not.toMatch(/<meta\s+name="keywords"/i);
     expect(html).not.toMatch(/hreflang=/i);
@@ -344,10 +361,12 @@ describe('offline precache audit', () => {
     const ld = ldDocs[0];
     expect(ld['@context']).toBe('https://schema.org');
     expect(ld['@graph'].map((n) => n['@type'])).toEqual(['WebSite', 'WebApplication']);
-    const appNode = ld['@graph'][1];
+    const [siteNode, appNode] = ld['@graph'];
+    expect(siteNode.inLanguage).toBe('vi');
     expect(appNode.url).toBe('https://lichongtrang.com/');
     expect(appNode.isAccessibleForFree).toBe(true);
-    expect(appNode.inLanguage).toEqual(['vi', 'en']);
+    expect(appNode.inLanguage).toBe('vi');
+    expect(appNode.screenshot).toBeUndefined();
     expect(appNode.license).toBe('https://lichongtrang.com/NOTICE.txt');
     expect(appNode.sameAs).toContain('https://github.com/qtdzz/lichongtrang-web');
 
@@ -362,11 +381,17 @@ describe('offline precache audit', () => {
 
   it('rejects single-quoted/unquoted/srcset bypasses, spoofed allowlist domains, external <a> event attributes, and malformed JSON-LD blocks', () => {
     expect(() => collectHtmlAssetRefs("<script src='https://lichongtrang.com/tracker.js'></script>")).toThrow();
+    expect(() => collectHtmlAssetRefs('<script src=" https://lichongtrang.com/x.js"></script>')).toThrow();
     expect(() => collectHtmlAssetRefs('<link rel=stylesheet href=https://lichongtrang.com/app.css>')).toThrow();
+    expect(() => collectHtmlAssetRefs('<link data-rel="canonical" href="https://lichongtrang.com/x.css">')).toThrow();
     expect(() => collectHtmlAssetRefs('<img srcset="https://lichongtrang.com/a.png 1x, icons/b.png 2x">')).toThrow();
     expect(() => collectHtmlAssetRefs('<script>fetch("https://evil.com/x")</script>')).toThrow();
+    expect(() => collectHtmlAssetRefs("<script>fetch('//evil.com/x')</script>")).toThrow();
 
     expect(() => assertNoDisallowedExternalUrls('sw.js', 'https://tracker.evil/schema.org')).toThrow();
+    expect(() => assertNoDisallowedExternalUrls('sw.js', 'https://evil.schema.org/')).toThrow();
+    expect(() => assertNoDisallowedExternalUrls('sw.js', 'http://localhost:8080/api')).toThrow();
+    expect(() => assertNoDisallowedExternalUrls('sw.js', 'https://evil.example.com/')).toThrow();
     expect(() => assertNoDisallowedExternalUrls('index.html', 'https://evil.com/?host=localhost')).toThrow();
     expect(() => assertNoDisallowedExternalUrls('index.html', 'https://lichongtrang.com.evil.com/')).toThrow();
     expect(() =>
