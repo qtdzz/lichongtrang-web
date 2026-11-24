@@ -1,6 +1,6 @@
 {
   "name": "lichongtrang-web",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "description": "Offline-first Vietnamese lunisolar calendar PWA (Lịch Ông Trăng)",
   "license": "AGPL-3.0-only AND LicenseRef-HoNgocDuc-NonCommercial",
