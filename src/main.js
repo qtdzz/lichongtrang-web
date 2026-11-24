@@ -91,15 +91,17 @@ function dayInfo(iso) {
   return engineDay(iso, offsetHours(), 'vi');
 }
 
-/** The build row: what engine bundle this page is running against. */
+/** The build row: app version and git commit for this bundle. */
 async function buildText() {
   try {
     const res = await fetch('build-info.json', { cache: 'no-cache' });
+    if (!res.ok) throw new Error();
     const info = await res.json();
-    const engineRev = (info.engineHash || 'unknown').slice(0, 8);
-    return `engine ${engineRev} · web ${info.webHash || 'dev'} · ${info.built || ''}`.trim();
+    const version = info.version ? `v${info.version}` : '';
+    const commit = info.commit ? (version ? `(${info.commit})` : info.commit) : '';
+    return [version, commit].filter(Boolean).join(' ') || 'build info unavailable';
   } catch {
-    return 'engine · build info unavailable';
+    return 'build info unavailable';
   }
 }
 

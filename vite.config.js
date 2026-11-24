@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -60,6 +61,22 @@ export function staticMetaMimeMiddleware(req, res, next) {
   next();
 }
 
+export function resolveBuildCommit(rootDir, env = process.env) {
+  for (const candidate of [env.GIT_SHA, env.GITHUB_SHA, env.CF_PAGES_COMMIT_SHA]) {
+    const raw = typeof candidate === 'string' ? candidate.trim() : '';
+    if (/^[0-9a-f]{7,40}$/i.test(raw)) return raw.slice(0, 7).toLowerCase();
+  }
+  try {
+    const sha = execFileSync('git', ['rev-parse', '--short=7', 'HEAD'], {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    if (/^[0-9a-f]{7,40}$/i.test(sha)) return sha.slice(0, 7).toLowerCase();
+  } catch {}
+  return null;
+}
+
 function pwaBuildPlugin() {
   let outDir = 'dist';
   let rootDir = process.cwd();
@@ -76,12 +93,18 @@ function pwaBuildPlugin() {
       server.middlewares.use(staticMetaMimeMiddleware);
     },
     async closeBundle() {
+      const pkg = JSON.parse(await readFile(resolve(rootDir, 'package.json'), 'utf8'));
+      const version = typeof pkg.version === 'string' && pkg.version.trim() ? pkg.version.trim() : null;
+      const commit = resolveBuildCommit(rootDir);
+
       const enginePath = resolve(rootDir, 'src/engine/amlich.js');
       const engineBytes = await readFile(enginePath);
       const engineHash = createHash('sha256').update(engineBytes).digest('hex');
 
       const web = await hashTree(outDir, { skip: ['build-info.json', 'sw.js', ...NON_PRECACHED_FILES] });
       const info = {
+        version,
+        commit,
         engineHash,
         engineFiles: ['amlich.js'],
         webHash: web.hash.slice(0, 12),
@@ -90,10 +113,10 @@ function pwaBuildPlugin() {
       await writeFile(join(outDir, 'build-info.json'), JSON.stringify(info, null, 2) + '\n');
 
       const all = await hashTree(outDir, { skip: ['sw.js', ...NON_PRECACHED_FILES] });
-      const version = `lot-web-${all.hash.slice(0, 12)}`;
+      const swVersion = `lot-web-${all.hash.slice(0, 12)}`;
       const template = await readFile(resolve(rootDir, 'src/sw.template.js'), 'utf8');
       const sw = template
-        .replace('__VERSION__', version)
+        .replace('__VERSION__', swVersion)
         .replace('__PRECACHE__', JSON.stringify(all.files, null, 2));
       await writeFile(join(outDir, 'sw.js'), sw);
     },

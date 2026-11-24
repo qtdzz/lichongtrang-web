@@ -2,6 +2,7 @@
 
 IMAGE ?= lichongtrang-web
 TAG ?= latest
+GIT_SHA ?= $(shell git rev-parse --short=7 HEAD 2>/dev/null || true)
 
 .PHONY: check verify-browser docker-build docker-publish
 
@@ -15,7 +16,7 @@ verify-browser:
 
 ## Build the Docker image locally without pushing it.
 docker-build:
-	docker build -t $(IMAGE):$(TAG) .
+	docker build --build-arg GIT_SHA=$(GIT_SHA) -t $(IMAGE):$(TAG) .
 
 ## Build and push the Docker image. On a self-hosted server afterwards:
 ##   docker compose pull && docker compose up -d

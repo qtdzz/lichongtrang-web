@@ -42,7 +42,7 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
       previousBuildText = await page.evaluate(() => {
         const el = document.getElementById('build-row');
         const prev = el?.textContent ?? null;
-        if (el) el.textContent = 'engine baseline · web baseline · 2026-09-28T05:00:00Z';
+        if (el) el.textContent = 'v1.0.0 (0000000)';
         return prev;
       });
     }
@@ -748,9 +748,12 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   );
 
   const aboutText = await page.locator('#about').innerText();
-  const buildRowText = await page.locator('#build-row').innerText();
+  const pkg = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8'));
+  const buildRowText = (await page.locator('#build-row').innerText()).trim();
   const info = JSON.parse(await readFile(join(DIST, 'build-info.json'), 'utf8'));
-  expect(buildRowText).toContain(info.engineHash.slice(0, 8));
+  expect(info.version).toBe(pkg.version);
+  expect(info.commit).toMatch(/^[0-9a-f]{7}$/);
+  expect(buildRowText).toBe(`v${info.version} (${info.commit})`);
   expect(aboutText).toMatch(/Thuật toán & tài liệu tham khảo/i);
   expect(aboutText).toContain('Hồ Ngọc Đức — Thuật toán tính âm lịch');
   expect(aboutText).toContain('Astronomical Algorithms');
@@ -804,7 +807,8 @@ test('renders calendar, handles interactions, matches all 11 visual baselines, a
   await page.waitForTimeout(80);
   await page.locator('#build-row').dispatchEvent('dblclick');
   const copiedDuringRace = await page.evaluate(() => window.__copied);
-  expect(copiedDuringRace).toMatch(/^engine /);
+  expect(copiedDuringRace).toBe(buildRowText);
+  expect(copiedDuringRace).toMatch(/^v\d+\.\d+\.\d+ \([0-9a-f]{7}\)$/);
   expect(copiedDuringRace).not.toContain('Đã sao chép');
   await page.waitForTimeout(1300);
   expect(await page.locator('#build-row').innerText()).toBe(buildRowText);

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { build } from 'vite';
 import { beforeAll, describe, it, expect } from 'vitest';
-import { hashTree, NON_PRECACHED_FILES, staticMetaMimeMiddleware } from '../../vite.config.js';
+import { hashTree, NON_PRECACHED_FILES, resolveBuildCommit, staticMetaMimeMiddleware } from '../../vite.config.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const DIST = join(ROOT, 'dist');
@@ -148,6 +148,48 @@ describe('offline precache audit', () => {
     expect(dockerignore).not.toContain('verify-shots');
     expect(dockerignore).toContain('test-results');
     expect(dockerignore).toContain('playwright-report');
+  });
+
+  it('resolves git commit and embeds version and commit in build-info.json and Dockerfile', async () => {
+    expect(resolveBuildCommit(ROOT, {
+      GIT_SHA: 'ABCDEF1234567890',
+      GITHUB_SHA: '1111111',
+      CF_PAGES_COMMIT_SHA: '2222222',
+    })).toBe('abcdef1');
+    expect(resolveBuildCommit(ROOT, {
+      GIT_SHA: 'not-a-sha',
+      GITHUB_SHA: '  1234567890abcdef  ',
+      CF_PAGES_COMMIT_SHA: '3333333',
+    })).toBe('1234567');
+    expect(resolveBuildCommit(ROOT, {
+      CF_PAGES_COMMIT_SHA: '89ABCDEF0',
+    })).toBe('89abcde');
+
+    const headSha = resolveBuildCommit(ROOT, {});
+    expect(headSha).toMatch(/^[0-9a-f]{7}$/);
+
+    const tempDir = await mkdtemp(join(tmpdir(), 'lot-nogit-'));
+    try {
+      expect(resolveBuildCommit(tempDir, {})).toBeNull();
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+
+    const pkg = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8'));
+    const buildInfo = JSON.parse(await readFile(join(DIST, 'build-info.json'), 'utf8'));
+    expect(buildInfo.version).toBe(pkg.version);
+    expect(buildInfo.commit).toBe(headSha);
+    expect(buildInfo.engineHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(buildInfo.webHash).toMatch(/^[0-9a-f]{12}$/);
+    expect(buildInfo.built).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
+
+    const dockerfile = await readFile(join(ROOT, 'Dockerfile'), 'utf8');
+    const argIdx = dockerfile.indexOf('ARG GIT_SHA');
+    const envIdx = dockerfile.indexOf('ENV GIT_SHA');
+    const checkIdx = dockerfile.indexOf('RUN npm run check');
+    expect(argIdx).toBeGreaterThan(-1);
+    expect(envIdx).toBeGreaterThan(argIdx);
+    expect(checkIdx).toBeGreaterThan(envIdx);
   });
 
   it('ships verbatim LICENSE and NOTICE files and retains @license headers in bundled JS', async () => {
