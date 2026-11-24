@@ -1062,3 +1062,102 @@ test('does not flash or animate the drawer on cold load before stylesheet arrive
     await context.close();
   }
 });
+
+test('resets selected date to today on every refresh while preserving user settings', async ({ page, context }) => {
+  await context.addInitScript(() => {
+    const FROZEN_MS = 1790571600000; // 2026-09-28T05:00:00.000Z
+    const OriginalDate = Date;
+    class FrozenDate extends OriginalDate {
+      constructor(...args) {
+        super(...(args.length === 0 ? [FROZEN_MS] : args));
+      }
+      static now() {
+        return FROZEN_MS;
+      }
+    }
+    globalThis.Date = FrozenDate;
+  });
+
+  const noise = [];
+  page.on('console', (m) => {
+    if (m.type() === 'error') noise.push(`console error: ${m.text()}`);
+  });
+  page.on('pageerror', (e) => noise.push(`page error: ${e.message}`));
+
+  await page.goto('/', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.cell-lunar', { timeout: 10000 });
+
+  await expect(page.locator('#weekdays > span').first()).toHaveText('T2');
+  await expect(page.locator('.cell.is-selected')).toHaveAttribute('data-iso', '2026-09-28');
+  await expect(page.locator('#panel-facts')).toContainText('Ngày 18 tháng 8 năm Bính Ngọ (Ngựa)');
+
+  await page.locator('.cell[data-iso="2026-09-15"]').click();
+  await expect(page.locator('.cell.is-selected')).toHaveAttribute('data-iso', '2026-09-15');
+  expect(await page.evaluate(() => localStorage.getItem('lichongtrang.web.settings.v1'))).toBeNull();
+
+  await page.locator('#next').click();
+  await expect(page.locator('.cell.is-selected')).toHaveCount(0);
+  await expect(page.locator('#panel-body')).toBeHidden();
+  await page.locator('#prev').click();
+  await expect(page.locator('.cell.is-selected')).toHaveAttribute('data-iso', '2026-09-15');
+  await expect(page.locator('#panel-body')).toBeVisible();
+
+  await page.locator('#menu-button').click();
+  await page.waitForFunction(() => document.getElementById('menu').classList.contains('is-open'), { timeout: 4000 });
+  await page.locator('#menu-settings').click();
+  await page.waitForSelector('#sheet:not([hidden])', { timeout: 4000 });
+  await page.locator('[data-weekstart="0"]').click();
+  await page.locator('#sheet-close').click();
+  await expect(page.locator('#sheet')).toBeHidden();
+  await expect(page.locator('#weekdays > span').first()).toHaveText('CN');
+
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('lichongtrang.web.settings.v1')));
+  expect(stored).toEqual({ weekStart: 0, zone: '7' });
+
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.cell-lunar', { timeout: 10000 });
+
+  await expect(page.locator('#weekdays > span').first()).toHaveText('CN');
+  await expect(page.locator('.cell.is-selected')).toHaveAttribute('data-iso', '2026-09-28');
+  await expect(page.locator('.cell.is-selected')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#panel-body')).toBeVisible();
+  await expect(page.locator('#panel-facts')).toContainText('Ngày 18 tháng 8 năm Bính Ngọ (Ngựa)');
+
+  await page.locator('#datepicker-button').click();
+  await page.waitForSelector('#datepicker:not([hidden])', { timeout: 4000 });
+  expect(await page.locator('#picker-year').inputValue()).toBe('2026');
+  expect(await page.locator('#picker-month').inputValue()).toBe('9');
+  expect(await page.locator('#picker-day').inputValue()).toBe('28');
+  await page.locator('#datepicker-cancel').click();
+  await expect(page.locator('[data-weekstart="0"]')).toHaveAttribute('aria-checked', 'true');
+
+  await page.locator('#datepicker-button').click();
+  await page.waitForSelector('#datepicker:not([hidden])', { timeout: 4000 });
+  await page.locator('#picker-year').selectOption('2024');
+  await page.locator('#picker-month').selectOption('2');
+  await page.locator('#picker-day').selectOption('29');
+  await page.locator('#datepicker-submit').click();
+  await expect(page.locator('#title-gregorian')).toHaveText('Tháng 2 2024');
+  await expect(page.locator('.cell.is-selected')).toHaveAttribute('data-iso', '2024-02-29');
+
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.cell-lunar', { timeout: 10000 });
+  await expect(page.locator('#title-gregorian')).toHaveText('Tháng 9 2026');
+  await expect(page.locator('.cell.is-selected')).toHaveAttribute('data-iso', '2026-09-28');
+  await expect(page.locator('#panel-body')).toBeVisible();
+  await expect(page.locator('#panel-facts')).toContainText('Ngày 18 tháng 8 năm Bính Ngọ (Ngựa)');
+
+  await page.evaluate(() => {
+    localStorage.setItem(
+      'lichongtrang.web.settings.v1',
+      JSON.stringify({ weekStart: 0, zone: 'device', selectedIso: '2026-09-15' }),
+    );
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.cell-lunar', { timeout: 10000 });
+  await expect(page.locator('.cell.is-selected')).toHaveAttribute('data-iso', '2026-09-28');
+  await expect(page.locator('[data-weekstart="0"]')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('[data-zone="device"]')).toHaveAttribute('aria-checked', 'true');
+
+  expect(noise).toEqual([]);
+});

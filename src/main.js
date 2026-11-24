@@ -34,13 +34,7 @@ const STORAGE_KEY = 'lichongtrang.web.settings.v1';
 /* ------------------------------------------------------------------ state */
 
 function defaultSettings() {
-  return { weekStart: 1, zone: '7', selectedIso: null };
-}
-
-function isValidIso(value) {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  if (!inRange(Number(value.slice(0, 4)))) return false;
-  return !engineDay(value, 7, 'vi').error;
+  return { weekStart: 1, zone: '7' };
 }
 
 function loadSettings() {
@@ -52,7 +46,6 @@ function loadSettings() {
     return {
       weekStart: parsed.weekStart === 0 ? 0 : 1,
       zone: parsed.zone === 'device' ? 'device' : '7',
-      selectedIso: isValidIso(parsed.selectedIso) ? parsed.selectedIso : null,
     };
   } catch {
     return defaultSettings();       // private mode, or corrupt: never fail to render a calendar
@@ -66,6 +59,7 @@ function saveSettings() {
 }
 
 let settings = loadSettings();
+let selectedIso = null;
 let view = { year: 0, month: 0 };
 /**
  * Zoom levels, the same three the phone has (MonthScreen.kt): '' is the month grid, 'years' a
@@ -177,7 +171,7 @@ function cellClass(cell) {
   if (cell.emphasis === 'solarTerm') classes.push('is-term');
   if (cell.emphasis === 'monthStart') classes.push('is-month-start');
   if (cell.isToday) classes.push('is-today');
-  if (cell.iso === settings.selectedIso) classes.push('is-selected');
+  if (cell.iso === selectedIso) classes.push('is-selected');
   return classes.join(' ');
 }
 
@@ -219,7 +213,7 @@ function renderGrid(grid) {
     ].filter(Boolean).join(', ');
     button.setAttribute('aria-label', aria);
     if (cell.isToday) button.setAttribute('aria-current', 'date');
-    if (cell.iso === settings.selectedIso) button.setAttribute('aria-selected', 'true');
+    if (cell.iso === selectedIso) button.setAttribute('aria-selected', 'true');
 
     const solar = document.createElement('span');
     solar.className = 'cell-solar';
@@ -361,13 +355,13 @@ function render() {
 
   // The selected day is remembered across months; if it is not in view, the panel shows nothing
   // rather than pretending a day is selected.
-  const inView = grid.cells.some((c) => c.iso === settings.selectedIso);
+  const inView = grid.cells.some((c) => c.iso === selectedIso);
   // Whether the month on screen is the one today is in: the way back to today is offered only when
   // the view is somewhere else. The panel does not depend on this - it keeps its place and prompts in
   // every month, so nothing below it shifts as you swipe.
   const today = todayIso();
   const away = view.year !== Number(today.slice(0, 4)) || view.month !== Number(today.slice(5, 7));
-  renderPanel(inView ? settings.selectedIso : null);
+  renderPanel(inView ? selectedIso : null);
   syncPanelHeight();
   renderTodayButton(away);
   updateSettingsUi();
@@ -525,9 +519,8 @@ function stepOut() {
 }
 
 function selectDay(iso) {
-  const prevIso = settings.selectedIso;
-  settings.selectedIso = iso;
-  saveSettings();
+  const prevIso = selectedIso;
+  selectedIso = iso;
   const gridEl = $('grid');
   const sameMonthRendered = zoom === '' && $('selector').hidden && renderedMonthKey === `${view.year}-${view.month}`;
   const nextCell = sameMonthRendered ? gridEl.querySelector(`.cell[data-iso="${iso}"]`) : null;
@@ -711,7 +704,7 @@ function openPanel(id) {
       if (copyResetTimer === null) $('build-row').textContent = text;
     });
   } else if (id === 'datepicker') {
-    populateDatePicker(settings.selectedIso || todayIso());
+    populateDatePicker(selectedIso || todayIso());
     $('picker-day').focus();
   }
 }
@@ -836,7 +829,7 @@ document.addEventListener('keydown', (event) => {
   // The page keys step by whatever unit is on screen, the same as the arrows do.
   if (event.key === 'PageUp') { shiftZoom(-1); event.preventDefault(); return; }
   if (event.key === 'PageDown') { shiftZoom(1); event.preventDefault(); return; }
-  const iso = settings.selectedIso;
+  const iso = selectedIso;
   if (!iso) return;
   const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[event.key];
   if (step === undefined) return;
@@ -1032,7 +1025,7 @@ if ('serviceWorker' in navigator) {
 
 const today = todayIso();
 view = { year: clampYear(Number(today.slice(0, 4))), month: Number(today.slice(5, 7)) };
-if (!settings.selectedIso) settings.selectedIso = today;
+selectedIso = today;
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => { updateInstallUi(); setOfflineBadge(); render(); });
